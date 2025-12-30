@@ -30,7 +30,7 @@ app.use(
       "https://leafkaart.com",
       "https://www.leafkaart.com",
       "https://leafkaart.cloud",
-      "https://www.leafkaart.cloud"
+      "https://www.leafkaart.cloud",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
