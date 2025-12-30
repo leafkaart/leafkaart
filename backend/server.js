@@ -27,10 +27,14 @@ app.use(
     origin: [
       "http://localhost:1100",
       "http://62.72.12.162:1100",
+
       "https://leafkaart.com",
       "https://www.leafkaart.com",
+      "https://api.leafkaart.com",
+
       "https://leafkaart.cloud",
-      "https://www.leafkaart.cloud"
+      "https://www.leafkaart.cloud",
+      "https://api.leafkaart.cloud"
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
