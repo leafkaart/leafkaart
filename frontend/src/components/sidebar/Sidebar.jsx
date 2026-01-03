@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../store/slices/authSlice";
-import leaflogo from "../../assets/leaflogo.ico"
+import leaflogo from "../../assets/favicon.ico"
 import logo from '../../assets/logo.png';
 import {
   LayoutDashboard,
