@@ -13,10 +13,6 @@ const addressSchema = new Schema({
   country: { type: String, default: 'India' },
   pincode: { type: String, required: true },
   isDefault: { type: Boolean, default: false },
-  geo: {
-    lat: Number,
-    lng: Number
-  }
 }, { timestamps: true });
 
 addressSchema.index({ user: 1, isDefault: 1 });
