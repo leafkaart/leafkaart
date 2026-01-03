@@ -94,6 +94,7 @@ const reviewRoutes = require("./routes/customerRoutes/reviewRoutes");
 
 // COMMON
 const notificationRoutes = require("./routes/notificationRoutes");
+const bannerRoutes = require("./routes/adminRoutes/adminBannerRoutes");
 
 /* =========================
    ROUTE MAPPINGS
@@ -121,6 +122,7 @@ app.use("/api/address", addressRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/notification", notificationRoutes);
+app.use("/api/banner", bannerRoutes);
 
 /* =========================
    DEFAULT ROUTE
