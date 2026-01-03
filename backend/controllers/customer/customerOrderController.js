@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
@@ -5,9 +6,9 @@ const Address = require("../../models/Address");
 
 exports.createOrder = async (req, res) => {
   try {
-    const { items, address, subTotal, shippingCharges, taxAmount, discount, grandTotal } = req.body;
+    const { items, address, shippingCharges = 0, taxAmount = 0, discount = 0, grandTotal } = req.body;
 
-    // --- VALIDATION ---
+    // --- VALIDATE ITEMS ---
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
@@ -15,59 +16,54 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    if (!address) {
-      return res.status(400).json({
-        success: false,
-        message: "Shipping address is required",
-      });
+    // --- VALIDATE ADDRESS ---
+    if (!address || !mongoose.Types.ObjectId.isValid(address)) {
+      return res.status(400).json({ success: false, message: "Invalid address ID" });
     }
 
-    const addressExists = await Address.findOne({ _id: address, user: req.user._id });
-
+    const addressExists = await Address.findOne({ _id: new mongoose.Types.ObjectId(address), user: req.user._id });
     if (!addressExists) {
-      return res.status(404).json({
-        success: false,
-        message: "Invalid address",
-      });
+      return res.status(404).json({ success: false, message: "Address not found" });
     }
 
-    // Validate each item
+    // --- VALIDATE PRODUCTS & STOCK ---
     for (const item of items) {
       if (!item.product || !item.qty || item.qty < 1) {
         return res.status(400).json({
           success: false,
-          message: "Each item must contain product and qty >= 1",
+          message: "Each item must have a product and qty >= 1",
         });
       }
 
-      const product = await Product.findById(item.product);
+      if (!mongoose.Types.ObjectId.isValid(item.product)) {
+        return res.status(400).json({ success: false, message: `Invalid product ID: ${item.product}` });
+      }
 
+      const product = await Product.findById(new mongoose.Types.ObjectId(item.product));
       if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: `Product not found: ${item.product}`,
-        });
+        return res.status(404).json({ success: false, message: `Product not found: ${item.product}` });
       }
 
-      // Stock check
+      if (!product.isActive || !product.isApproved) {
+        return res.status(400).json({ success: false, message: `Product not available: ${product.title}` });
+      }
+
       if (product.stock < item.qty) {
-        return res.status(400).json({
-          success: false,
-          message: `Insufficient stock for ${product.title}`,
-        });
+        return res.status(400).json({ success: false, message: `Insufficient stock for ${product.title}` });
       }
 
-      // Append dynamic product data
+      // --- ADD SNAPSHOT DATA ---
       item.title = product.title;
       item.sku = product.sku;
-      item.price = product.offerPrice || product.price;
+      item.price = product.customerPrice; // or product.offerPrice if using offers
       item.total = item.price * item.qty;
-      item.dealer = product.dealer;
+      item.dealer = product.dealerId;
+      item.product = new mongoose.Types.ObjectId(item.product); // <-- FIX
     }
 
-    // --- FINAL TOTAL VALIDATION ---
-    const computedSubTotal = items.reduce((s, it) => s + it.total, 0);
-    const computedGrandTotal = (computedSubTotal + (shippingCharges || 0) + (taxAmount || 0)) - (discount || 0);
+    // --- CALCULATE TOTALS ---
+    const computedSubTotal = items.reduce((sum, i) => sum + i.total, 0);
+    const computedGrandTotal = computedSubTotal + shippingCharges + taxAmount - discount;
 
     if (parseFloat(grandTotal) !== parseFloat(computedGrandTotal)) {
       return res.status(400).json({
@@ -77,20 +73,20 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // Create order number
+    // --- CREATE ORDER NUMBER ---
     const orderNumber = "ORD-" + Date.now();
 
-    // Create order
+    // --- CREATE ORDER ---
     const order = await Order.create({
       orderNumber,
       user: req.user._id,
       items,
       subTotal: computedSubTotal,
-      shippingCharges: shippingCharges || 0,
-      taxAmount: taxAmount || 0,
-      discount: discount || 0,
+      shippingCharges,
+      taxAmount,
+      discount,
       grandTotal: computedGrandTotal,
-      address,
+      address: new mongoose.Types.ObjectId(address), // <-- FIX
       payment: req.body.payment || null,
       timeline: [
         {
@@ -101,18 +97,13 @@ exports.createOrder = async (req, res) => {
       ],
     });
 
-    // Reduce stock
+    // --- DEDUCT STOCK ---
     for (const item of items) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: -item.qty },
-      });
+      await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.qty } });
     }
 
-    // Clear cart
-    await Cart.findOneAndUpdate(
-      { user: req.user._id },
-      { $set: { items: [], totalAmount: 0 } }
-    );
+    // --- CLEAR CART ---
+    await Cart.findOneAndUpdate({ user: req.user._id }, { $set: { items: [], totalAmount: 0 } });
 
     return res.json({
       success: true,
@@ -121,6 +112,7 @@ exports.createOrder = async (req, res) => {
     });
 
   } catch (err) {
+    console.error("Create order error:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -130,9 +122,17 @@ exports.listOrders = async (req, res) => {
     const orders = await Order.find({ user: req.user._id })
       .sort({ createdAt: -1 });
 
-    return res.json({ success: true, orders });
+    return res.json({
+      success: true,
+      count: orders.length,
+      orders
+    });
+
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
 
@@ -140,22 +140,27 @@ exports.getOrder = async (req, res) => {
   try {
     const order = await Order.findOne({
       _id: req.params.id,
-      user: req.user._id,
+      user: req.user._id
     })
       .populate("items.product")
       .populate("address")
-      .populate("payment");
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found",
+        message: "Order not found"
       });
     }
 
-    return res.json({ success: true, order });
+    return res.json({
+      success: true,
+      order
+    });
 
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
