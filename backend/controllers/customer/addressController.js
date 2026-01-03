@@ -2,7 +2,7 @@ const Address = require("../../models/Address");
 
 exports.addAddress = async (req, res) => {
   try {
-    const { label, name, phone, line1, city, state, country, pincode, isDefault, geo } = req.body;
+    const { label, name, phone, line1, city, state, country, pincode, isDefault } = req.body;
 
     if (!line1 || !city || !pincode) {
       return res.status(400).json({
@@ -29,7 +29,6 @@ exports.addAddress = async (req, res) => {
       state,
       country: country || "India",
       pincode,
-      geo,
       isDefault: !!isDefault,
     };
 
