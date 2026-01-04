@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useGetProductByIdQuery } from "../../store/api/productsApi";
-import { ChevronLeft, Star, Package, User, Calendar, CheckCircle, XCircle } from "lucide-react";
+import { ChevronLeft, Star, Package, User, Calendar, CheckCircle, XCircle,Save  } from "lucide-react";
+import axios from "axios";
 
 export default function ProductDetail() {
   const { productId } = useParams();
   const { data: product, isLoading, error } = useGetProductByIdQuery(productId);
   const [selectedImage, setSelectedImage] = useState(0);
-
+const [commission, setCommission] = useState(product?.commission || 0);
+const [isEditingCommission, setIsEditingCommission] = useState(false);
+const [isSaving, setIsSaving] = useState(false);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -28,6 +31,31 @@ export default function ProductDetail() {
     );
   }
 
+const handleCommissionUpdate = async () => {
+  setIsSaving(true);
+  try {
+    const response = await axios.patch(
+      `${import.meta.env.VITE_BACKEND_URL}/products/${productId}/commission`,
+      { 
+        commission: parseFloat(commission),
+        customerPrice: product.dealerPrice + parseFloat(commission)
+      }
+    );
+    
+    if (response.status === 200 || response.status === 201) {
+      setIsEditingCommission(false);
+      alert('Commission updated successfully!');
+      // Optionally refetch the product data
+      window.location.reload(); // Or use your refetch method
+    }
+  } catch (error) {
+    console.error('Failed to update commission:', error);
+    const errorMessage = error.response?.data?.message || 'Error updating commission. Please try again.';
+    alert(errorMessage);
+  } finally {
+    setIsSaving(false);
+  }
+};
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -123,13 +151,77 @@ export default function ProductDetail() {
               </span>
             </div>
 
-            {/* Price */}
-            <div className="bg-gray-50  rounded-lg">
-              <div className="text-3xl font-bold text-gray-900">
-                ₹{product.dealerPrice.toLocaleString()}
-              </div>
-              <p className="text-sm text-gray-600 mt-1">Dealer Price</p>
-            </div>
+          {/* Price */}
+<div className="bg-gray-50 rounded-lg  space-y-3">
+  <div>
+    <div className="text-2xl font-bold text-gray-900">
+      ₹{product.dealerPrice.toLocaleString()}
+    </div>
+    <p className="text-sm text-gray-600">Dealer Price</p>
+  </div>
+  
+  {/* Commission Input */}
+  <div className="border-t pt-3">
+    <div className="flex items-center justify-between mb-2">
+      <label className="text-sm font-medium text-gray-700">Commission</label>
+      {!isEditingCommission && (
+        <button
+          onClick={() => setIsEditingCommission(true)}
+          className="text-sm text-blue-900 font-semibold hover:text-blue-700"
+        >
+          Edit
+        </button>
+      )}
+    </div>
+    
+    {isEditingCommission ? (
+      <div className="flex gap-2">
+        <input
+          type="number"
+          value={commission}
+          onChange={(e) => setCommission(e.target.value)}
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter commission"
+        />
+        <button
+          onClick={handleCommissionUpdate}
+          disabled={isSaving}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+        >
+          {isSaving ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-1" />
+              Save
+            </>
+          )}
+        </button>
+        <button
+          onClick={() => {
+            setCommission(product.commission || 0);
+            setIsEditingCommission(false);
+          }}
+          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+      </div>
+    ) : (
+      <div className="text-lg font-semibold text-gray-900">
+        ₹{(commission || 0).toLocaleString()}
+      </div>
+    )}
+  </div>
+  
+  {/* Customer Price */}
+  <div className="border-t pt-3">
+    <p className="text-sm text-gray-600 mb-1">Customer Price</p>
+    <div className="text-2xl font-bold text-green-600">
+      ₹{(product.dealerPrice + parseFloat(commission || 0)).toLocaleString()}
+    </div>
+  </div>
+</div>
 
             {/* Product Information */}
             <div className="border-t pt-6 space-y-4">
