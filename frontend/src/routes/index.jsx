@@ -156,7 +156,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "product/:productId",
+        path: "products/:productId",
         element: (
           <SuspenseWrapper>
             <ProductDetail />
@@ -222,7 +222,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "product/:productId",
+        path: "products/:productId",
         element: (
           <SuspenseWrapper>
             <ProductDetail />
@@ -256,7 +256,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "product/:productId",
+        path: "products/:productId",
         element: (
           <SuspenseWrapper>
             <ProductDetail />

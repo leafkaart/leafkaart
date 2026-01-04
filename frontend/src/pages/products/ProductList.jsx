@@ -29,6 +29,7 @@ function ProductList() {
   const [showModal, setShowModal] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = user?.role;
   const isDealer = user?.role === "dealer";
 const navigate = useNavigate();
   // New product form state
@@ -341,7 +342,7 @@ const navigate = useNavigate();
                       {/* Product Info */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3"     onClick={()=>{
-                          navigate(`${import.meta.env.VITE_BACKEND_URL}/product/${product._id || product.id}`)
+                          navigate(`${product._id || product.id}`)
                         }}                >
                           <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
                             <Package className="w-6 h-6 text-amber-700 opacity-50" />
