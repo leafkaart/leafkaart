@@ -10,6 +10,7 @@ export const bannersApi = createApi({
       if (token) {
         headers.set('authorization', `Bearer ${token}`);
       }
+      // Don't set Content-Type for FormData - browser will set it with boundary
       return headers;
     },
   }),
