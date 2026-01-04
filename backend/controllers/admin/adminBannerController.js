@@ -5,35 +5,70 @@ exports.createBanner = async (req, res) => {
   try {
     const { title, link, order, isActive } = req.body;
 
-    if (!req.file) {
+    // 🔹 Validations
+    if (!title || title.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Title is required",
+      });
+    }
+
+    // 🔹 Image validation (SINGLE IMAGE)
+    if (!req.files || !req.files.images) {
       return res.status(400).json({
         success: false,
         message: "Banner image is required",
       });
     }
 
-    // Upload image to Cloudinary
-    const upload = await uploadImageToCloudinary(req.file, "banners", 1200, 600);
+    const image = req.files.images; // 👈 single image
 
-    if (!upload || !upload.secure_url) {
-      return res.status(500).json({ success: false, message: "Image upload failed" });
+    // Optional: size check (5MB)
+    if (image.size > 5 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        message: "Image size must be less than 5MB",
+      });
     }
 
+    // 🔹 Upload to Cloudinary
+    const upload = await uploadImageToCloudinary(
+      image,
+      process.env.FOLDER_NAME || "banners",
+      1200,
+      600
+    );
+
+    if (!upload || !upload.secure_url) {
+      return res.status(500).json({
+        success: false,
+        message: "Image upload failed",
+      });
+    }
+
+    // 🔹 Save to DB
     const banner = await Banner.create({
-      imageUrl: upload.secure_url,
-      alt: title || "Banner Image",
+      images: upload.secure_url,  
+      alt: title || "Banner image",
       title,
       link,
       order: order || 0,
       isActive: isActive !== undefined ? isActive : true,
-      createdBy: req.user._id
+      createdBy: req.user._id,
     });
 
-    res.status(201).json({ success: true, message: "Banner created", banner });
+    res.status(201).json({
+      success: true,
+      message: "Banner created successfully",
+      data: banner,
+    });
 
-  } catch (err) {
-    console.error("createBanner error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("createBanner error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
