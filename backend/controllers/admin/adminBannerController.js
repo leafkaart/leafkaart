@@ -5,7 +5,7 @@ exports.createBanner = async (req, res) => {
   try {
     const { title, link, order, isActive } = req.body;
 
-    if (!req.file) {
+    if (!req.body.file) {
       return res.status(400).json({
         success: false,
         message: "Banner image is required",
@@ -13,7 +13,7 @@ exports.createBanner = async (req, res) => {
     }
 
     // Upload image to Cloudinary
-    const upload = await uploadImageToCloudinary(req.file, "banners", 1200, 600);
+    const upload = await uploadImageToCloudinary(req.body.file, "banners", 1200, 600);
 
     if (!upload || !upload.secure_url) {
       return res.status(500).json({ success: false, message: "Image upload failed" });

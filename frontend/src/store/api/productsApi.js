@@ -30,10 +30,12 @@ const productsApi = createApi({
   providesTags: ["SubCategories"],
   transformResponse: (response) => {
     const data = response.data || response;
+
+    console.log("SubCategories Response:", response);
     // Transform categoryId from object to string
     return Array.isArray(data) ? data.map(sub => ({
       ...sub,
-      categoryId: typeof sub.categoryId === 'object' ? sub.categoryId._id : sub.categoryId
+      categoryId:  sub.categoryId?._id
     })) : data;
   },
 }),

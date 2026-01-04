@@ -21,6 +21,7 @@ import LandingPage from "./LandingPage"; // Import your landing page
 import { useSelector } from "react-redux";
 import ProfilePage from "../pages/admin/ProfilePage";
 import WaitingForApproval from "../pages/auth/WaitingForApproval";
+import BannerManagement from "../pages/banner/BannerManagement ";
 
 // Lazy-loaded pages
 const Login = lazy(() => import("../pages/auth/Login"));
@@ -194,6 +195,14 @@ const router = createBrowserRouter([
           </SuspenseWrapper>
         ),
       },
+      {
+        path:"banners",
+        element: (
+          <SuspenseWrapper>
+           <BannerManagement/>
+          </SuspenseWrapper>
+        ),
+      }
     ],
   },
   {
