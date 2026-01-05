@@ -108,6 +108,51 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
+exports.updateCommission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { commission, customerPrice } = req.body;
+
+    if (commission === undefined || customerPrice === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "commission and customerPrice are required",
+      });
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      {
+        commission: Number(commission),
+        customerPrice: Number(customerPrice),
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Commission updated successfully",
+      data: updatedProduct,
+    });
+  } catch (error) {
+    console.error("Update commission error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 // DELETE PRODUCT
 exports.deleteProduct = async (req, res) => {
   try {

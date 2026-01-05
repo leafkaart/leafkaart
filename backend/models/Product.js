@@ -13,6 +13,7 @@ const productSchema = new Schema({
   images: [{ url: String, alt: String, order: Number }],
   customerPrice: { type: Number, min: 0 },
   dealerPrice: { type: Number },
+  commission: { type: Number },
   stock: { type: Number, default: 0, min: 0 },
   isApproved: { type: Boolean, default: false },
   approvedAt: Date,
