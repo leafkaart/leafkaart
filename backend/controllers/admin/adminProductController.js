@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const User = require('../../models/User')
 const Product = require('../../models/Product');
 const Notification = require("../../models/Notification");
 const { getIO } = require("../../socket");
@@ -142,6 +143,59 @@ exports.rejectProduct = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error"
+    });
+  }
+};
+
+exports.getDealersAndProductsByPincode = async (req, res) => {
+  try {
+    const { pinCode } = req.params;
+
+    // 1️⃣ Find dealers by pincode
+    const dealers = await User.find({
+      role: "dealer",
+      pinCode: pinCode,
+      isActive: true
+    }).select("-password");
+
+    if (!dealers.length) {
+      return res.json({
+        success: true,
+        message: "No dealers found for this pincode",
+        data: []
+      });
+    }
+
+    // 2️⃣ Get dealer IDs
+    const dealerIds = dealers.map(d => d._id);
+
+    // 3️⃣ Find products for those dealers
+    const products = await Product.find({
+      dealerId: { $in: dealerIds }
+    });
+
+    // 4️⃣ Map products to dealers
+    const result = dealers.map(dealer => {
+      const dealerProducts = products.filter(
+        product => product.dealerId.toString() === dealer._id.toString()
+      );
+
+      return {
+        dealer,
+        products: dealerProducts
+      };
+    });
+
+    return res.json({
+      success: true,
+      count: result.length,
+      data: result
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };

@@ -35,7 +35,7 @@ exports.listOrders = async (req, res) => {
 
 exports.getOrder = async (req, res) => {
   try {
-    const { id } = req.query; // route used earlier was GET /getOrder
+    const { id } = req.query;
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Valid order id required' });
     }
@@ -53,36 +53,70 @@ exports.getOrder = async (req, res) => {
   }
 };
 
-exports.assignOrder = async (req, res) => {
+exports.assignOrderToDealer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { assigneeId, status } = req.body;
+    const { dealerId, notes } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Invalid order id' });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order id"
+      });
     }
-    const order = await Order.findById(id);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-    if (assigneeId) {
-      if (!mongoose.Types.ObjectId.isValid(assigneeId)) {
-        return res.status(400).json({ success: false, message: 'Invalid assignee id' });
-      }
-      order.assignedTo = assigneeId;
+    if (!mongoose.Types.ObjectId.isValid(dealerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid dealer id"
+      });
     }
-    if (status) {
-      order.status = status;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
     }
+
+    const alreadyAssigned = order.dealerAssign.some(
+      d => d.dealer.toString() === dealerId
+    );
+
+    if (alreadyAssigned) {
+      return res.status(400).json({
+        success: false,
+        message: "Dealer already assigned to this order"
+      });
+    }
+
+    order.dealerAssign.push({
+      dealer: dealerId,
+      assignedBy: req.user._id, 
+      notes
+    });
+
+    order.status = "processing";
 
     await order.save();
 
-    const updated = await Order.findById(id)
-      .populate('assignedTo', 'name email')
-      .populate('customer', 'name email phone');
+    const updatedOrder = await Order.findById(id)
+      .populate("dealerAssign.dealer", "name email storeName")
+      .populate("dealerAssign.assignedBy", "name email")
+      .populate("user", "name email mobile");
 
-    res.json({ success: true, message: 'Order updated', data: updated });
+    return res.json({
+      success: true,
+      message: "Dealer assigned successfully",
+      data: updatedOrder
+    });
+
   } catch (err) {
-    console.error('assignOrder err', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("assignOrderToDealer error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 };

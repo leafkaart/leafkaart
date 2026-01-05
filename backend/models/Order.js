@@ -12,10 +12,21 @@ const orderItemSchema = new Schema({
   dealer: { type: Schema.Types.ObjectId, ref: 'User' }
 }, { _id: false });
 
+const dealerAssignSchema = new Schema({
+  dealer: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  assignedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  assignedAt: { type: Date, default: Date.now },
+  notes: { type: String }
+}, { _id: false });
+
 const orderSchema = new Schema({
   orderNumber: { type: String, required: true, unique: true, index: true },
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   items: { type: [orderItemSchema], required: true },
+  dealerAssign: {
+    type: [dealerAssignSchema],
+    default: []
+  },
   subTotal: { type: Number, required: true },
   shippingCharges: { type: Number, default: 0 },
   taxAmount: { type: Number, default: 0 },
