@@ -84,6 +84,13 @@ const Sidebar = () => {
       getRolePath: (role) => `/${role}/banners`,
       roles: ["admin"] 
     },
+    { 
+      id: "Orders", 
+      label: "Orders", 
+      icon: User, 
+      getRolePath: (role) => `/${role}/orders`,
+      roles: ["admin","employee"] 
+    },
   ];
 
   // Filter menu items based on user role and generate paths

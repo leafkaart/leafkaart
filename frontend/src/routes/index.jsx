@@ -22,6 +22,7 @@ import { useSelector } from "react-redux";
 import ProfilePage from "../pages/admin/ProfilePage";
 import WaitingForApproval from "../pages/auth/WaitingForApproval";
 import BannerManagement from "../pages/banner/BannerManagement ";
+import OrderList from "../pages/orders/OrderList";
 
 // Lazy-loaded pages
 const Login = lazy(() => import("../pages/auth/Login"));
@@ -202,6 +203,14 @@ const router = createBrowserRouter([
            <BannerManagement/>
           </SuspenseWrapper>
         ),
+      },
+      {
+        path:"orders",
+        element: (
+          <SuspenseWrapper>
+           <OrderList/>
+          </SuspenseWrapper>
+        ),
       }
     ],
   },
@@ -295,6 +304,14 @@ const router = createBrowserRouter([
           </SuspenseWrapper>
         ),
       },
+      {
+        path:"orders",
+        element: (
+          <SuspenseWrapper>
+           <OrderList/>
+          </SuspenseWrapper>
+        ),
+      }
     ],
   },
   {

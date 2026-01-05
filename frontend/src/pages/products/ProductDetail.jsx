@@ -1,16 +1,22 @@
-import { useState } from "react";
+import { useState,useEffect  } from "react";
 import { useParams } from "react-router-dom";
-import { useGetProductByIdQuery } from "../../store/api/productsApi";
+import { useGetProductByIdQuery, useGetProductsQuery } from "../../store/api/productsApi";
 import { ChevronLeft, Star, Package, User, Calendar, CheckCircle, XCircle,Save  } from "lucide-react";
 import axios from "axios";
 
 export default function ProductDetail() {
   const { productId } = useParams();
-  const { data: product, isLoading, error } = useGetProductByIdQuery(productId);
+const { data: product, isLoading, error, refetch } = useGetProductByIdQuery(productId);
   const [selectedImage, setSelectedImage] = useState(0);
-const [commission, setCommission] = useState(product?.commission || 0);
+const [commission, setCommission] = useState(0);
 const [isEditingCommission, setIsEditingCommission] = useState(false);
 const [isSaving, setIsSaving] = useState(false);
+
+useEffect(() => {
+  if (product) {
+    setCommission(product.commission || 0);
+  }
+}, [product]);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -35,7 +41,7 @@ const handleCommissionUpdate = async () => {
   setIsSaving(true);
   try {
     const response = await axios.patch(
-      `${import.meta.env.VITE_BACKEND_URL}/products/commission/${productId}`,
+      `${import.meta.env.VITE_BACKEND_URL}/employee/products/commission/${productId}`,
       { 
         commission: parseFloat(commission),
         customerPrice: product.dealerPrice + parseFloat(commission)
@@ -45,8 +51,7 @@ const handleCommissionUpdate = async () => {
     if (response.status === 200 || response.status === 201) {
       setIsEditingCommission(false);
       alert('Commission updated successfully!');
-      // Optionally refetch the product data
-      window.location.reload(); // Or use your refetch method
+      refetch();
     }
   } catch (error) {
     console.error('Failed to update commission:', error);
