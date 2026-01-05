@@ -59,7 +59,7 @@ const BannerManagement = () => {
     link: "",
     order: 0,
     isActive: true,
-    image: null,
+    images: null,
   });
 
   const [bannerErrors, setBannerErrors] = useState({});
@@ -84,7 +84,7 @@ const BannerManagement = () => {
   const validateBannerForm = () => {
     const errors = {};
     if (!bannerForm.title?.trim()) errors.title = "Banner title is required";
-    if (!isEditMode && !bannerForm.image) errors.image = "Banner image is required";
+    if (!isEditMode && !bannerForm.images) errors.images = "Banner images is required";
     if (bannerForm.order < 0) errors.order = "Order must be 0 or greater";
     setBannerErrors(errors);
     return Object.keys(errors).length === 0;
@@ -103,11 +103,11 @@ const BannerManagement = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setBannerErrors({ ...bannerErrors, image: "Image size must be less than 5MB" });
+        setBannerErrors({ ...bannerErrors, images: "Image size must be less than 5MB" });
         return;
       }
-      setBannerForm({ ...bannerForm, image: file });
-      setBannerErrors({ ...bannerErrors, image: "" });
+      setBannerForm({ ...bannerForm, images: file });
+      setBannerErrors({ ...bannerErrors, images: "" });
       
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -128,8 +128,8 @@ const BannerManagement = () => {
       formData.append("order", bannerForm.order);
       formData.append("isActive", bannerForm.isActive);
       
-      if (bannerForm.image) {
-        formData.append("file", bannerForm.image);
+      if (bannerForm.images) {
+        formData.append("images", bannerForm.images);
       }
 
       if (isEditMode) {
@@ -160,7 +160,7 @@ const BannerManagement = () => {
       link: banner.link || "",
       order: banner.order || 0,
       isActive: banner.isActive,
-      image: null,
+      images: null,
     });
     setImagePreview(banner.imageUrl);
     setShowBannerModal(true);
@@ -201,7 +201,7 @@ const BannerManagement = () => {
       link: "",
       order: 0,
       isActive: true,
-      image: null,
+      images: null,
     });
     setBannerErrors({});
     setIsEditMode(false);
@@ -355,7 +355,7 @@ const BannerManagement = () => {
             >
               <div className="relative h-48 bg-gray-100">
                 <img
-                  src={banner.imageUrl}
+                  src={banner.images}
                   alt={banner.alt || banner.title}
                   className="w-full h-full object-cover"
                 />
@@ -464,7 +464,7 @@ const BannerManagement = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             setImagePreview(null);
-                            setBannerForm({ ...bannerForm, image: null });
+                            setBannerForm({ ...bannerForm, images: null });
                           }}
                           className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
                         >
@@ -484,8 +484,8 @@ const BannerManagement = () => {
                     )}
                   </label>
                 </div>
-                {bannerErrors.image && (
-                  <p className="text-red-500 text-xs mt-1">{bannerErrors.image}</p>
+                {bannerErrors.images && (
+                  <p className="text-red-500 text-xs mt-1">{bannerErrors.images}</p>
                 )}
               </div>
 

@@ -152,9 +152,9 @@ const Sidebar = () => {
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         {/* Header */}
-        <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-center">
+        <div className="py-2 border-b border-amber-100 flex items-center justify-center">
           <div className="flex items-center gap-1">
-            <img src={logo} alt="LeafKaart Logo" className="h-20" />
+            <img src={logo} alt="LeafKaart Logo" className="h-14 w-20" />
           </div>
 
           <button

@@ -35,7 +35,7 @@ const handleCommissionUpdate = async () => {
   setIsSaving(true);
   try {
     const response = await axios.patch(
-      `${import.meta.env.VITE_BACKEND_URL}/products/${productId}/commission`,
+      `${import.meta.env.VITE_BACKEND_URL}/products/commission/${productId}`,
       { 
         commission: parseFloat(commission),
         customerPrice: product.dealerPrice + parseFloat(commission)
