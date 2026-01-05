@@ -23,6 +23,7 @@ import ProfilePage from "../pages/admin/ProfilePage";
 import WaitingForApproval from "../pages/auth/WaitingForApproval";
 import BannerManagement from "../pages/banner/BannerManagement ";
 import OrderList from "../pages/orders/OrderList";
+import OrderDetails from "../pages/orders/OrderDetails";
 
 // Lazy-loaded pages
 const Login = lazy(() => import("../pages/auth/Login"));
@@ -209,6 +210,14 @@ const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
            <OrderList/>
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path:"orders/:orderId",
+        element: (
+          <SuspenseWrapper>
+           <OrderDetails/>
           </SuspenseWrapper>
         ),
       }

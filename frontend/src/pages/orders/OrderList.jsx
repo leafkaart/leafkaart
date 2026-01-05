@@ -82,7 +82,7 @@ function OrderList() {
   };
 
   const handleViewOrder = (orderId) => {
-    navigate(`/orders/${orderId}`);
+    navigate(`${orderId}`);
   };
 
   return (

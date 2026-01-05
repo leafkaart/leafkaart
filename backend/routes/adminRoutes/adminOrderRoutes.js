@@ -4,7 +4,7 @@ const auth = require('../../middlewares/authMiddleware');
 const router = express.Router();
 
 router.get('/listOrders', listOrders);
-router.get('/getOrder', getOrder);
+router.get('/getOrder/:id', getOrder);
 router.post('/assignOrderToDealer/:id', auth, assignOrderToDealer);
 
 module.exports = router;

@@ -18,7 +18,6 @@ exports.listOrders = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate('customer', 'name email phone')
         .populate('items.product', 'title sku price'),
       Order.countDocuments(filter)
     ]);
@@ -35,12 +34,12 @@ exports.listOrders = async (req, res) => {
 
 exports.getOrder = async (req, res) => {
   try {
-    const { id } = req.query;
+    const { id } = req.params;
+    console.log('Get order id:', id);
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Valid order id required' });
     }
     const order = await Order.findById(id)
-      .populate('customer', 'name email phone')
       .populate('assignedTo', 'name email')
       .populate('items.product', 'title slug sku price');
 
