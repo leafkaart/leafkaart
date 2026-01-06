@@ -45,8 +45,8 @@ export default function OrderDetail() {
   const [assignDealer, { isLoading: isAssigning }] = useAssignDealerToOrderMutation();
 
   const handleSearchDealers = () => {
-    if (order?.address?.pinCode) {
-      setSearchPincode(order.address.pinCode);
+    if (order?.address?.pincode) {
+      setSearchPincode(order.address.pincode);
       setShowDealerPanel(true);
       refetchDealers();
     }
@@ -367,7 +367,7 @@ export default function OrderDetail() {
                 <p>
                   {order.address?.city}, {order.address?.state}
                 </p>
-                <p className="font-medium">PIN: {order.address?.pinCode}</p>
+                <p className="font-medium">PIN: {order.address?.pincode}</p>
                 {order.address?.mobile && (
                   <p className="mt-2 text-sm">
                     <Phone className="w-4 h-4 inline mr-1" />
@@ -425,7 +425,7 @@ export default function OrderDetail() {
                   Assign Dealer
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Pincode: {order.address?.pinCode}
+                  Pincode: {order.address?.pincode}
                 </p>
               </div>
               <button
