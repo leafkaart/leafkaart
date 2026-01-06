@@ -24,8 +24,8 @@ const orderSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   items: { type: [orderItemSchema], required: true },
   dealerAssign: {
-    type: [dealerAssignSchema],
-    default: []
+    type: dealerAssignSchema,
+    default: null
   },
   subTotal: { type: Number, required: true },
   shippingCharges: { type: Number, default: 0 },

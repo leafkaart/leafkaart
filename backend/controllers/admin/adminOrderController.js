@@ -99,22 +99,18 @@ exports.assignOrderToDealer = async (req, res) => {
       });
     }
 
-    const alreadyAssigned = order.dealerAssign.some(
-      d => d.dealer.toString() === dealerId
-    );
-
-    if (alreadyAssigned) {
+    if (order.dealerAssign) {
       return res.status(400).json({
         success: false,
         message: "Dealer already assigned to this order"
       });
     }
 
-    order.dealerAssign.push({
+    order.dealerAssign = {
       dealer: dealerId,
-      assignedBy: req.user._id, 
+      assignedBy: req.user._id,
       notes
-    });
+    };
 
     order.status = "processing";
 
@@ -139,3 +135,4 @@ exports.assignOrderToDealer = async (req, res) => {
     });
   }
 };
+
