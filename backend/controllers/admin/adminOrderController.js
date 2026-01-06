@@ -35,20 +35,40 @@ exports.listOrders = async (req, res) => {
 exports.getOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('Get order id:', id);
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Valid order id required' });
+    console.log("Get order id:", id);
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid order id required",
+      });
     }
+
     const order = await Order.findById(id)
-      .populate('assignedTo', 'name email')
-      .populate('items.product', 'title slug sku price');
+      .populate("user", "name email phone")
+      .populate("address")
+      .populate("items.product", "title slug sku price")
+      .populate("dealerAssign.dealer", "name email")
+      .populate("dealerAssign.assignedBy", "name email")
 
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
-    res.json({ success: true, data: order });
+    return res.status(200).json({
+      success: true,
+      data: order,
+    });
   } catch (err) {
-    console.error('getOrder err', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("getOrder error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
