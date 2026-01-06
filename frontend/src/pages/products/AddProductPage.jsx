@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, Plus,CheckCircle  } from "lucide-react";
 import ImageUploadSection from "./ImageUploadSection";
-import { useGetSubCategoriesQuery,  useCreateProductMutation, } from "../../store/api/productsApi"; 
+import { useGetSubCategoriesQuery,  useCreateProductMutation, useGetSubCategoriesByCategoryQuery} from "../../store/api/productsApi"; 
 function AddProductPage({
   onBack,
   categories,
@@ -26,11 +26,11 @@ const [toastType, setToastType] = useState("success");
 
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { data: subcategoriesResponse, isLoading: subCategoriesLoading } =
-    useGetSubCategoriesQuery(formData.categoryId, {
-      skip: !formData.categoryId,
-    });
-    const subcategories = subcategoriesResponse ?? [];
+ const { data: subcategoriesResponse, isLoading: subCategoriesLoading, error: subCategoriesError } =
+  useGetSubCategoriesByCategoryQuery(formData.categoryId, {
+    skip: !formData.categoryId,
+  });
+const subcategories = subCategoriesError || !subcategoriesResponse ? [] : subcategoriesResponse;
     const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
 
     const showToastMessage = (message, type = "success") => {
@@ -40,15 +40,22 @@ const [toastType, setToastType] = useState("success");
   setTimeout(() => setShowToast(false), 3000);
 };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-      // Reset subcategory when category changes
-      ...(name === "categoryId" ? { subCategoryId: "" } : {}),
-    }));
-  };
+ const handleInputChange = (e) => {
+  const { name, value } = e.target;
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value,
+    // Reset subcategory when category changes
+    ...(name === "categoryId" ? { subCategoryId: "" } : {}),
+  }));
+  
+  // Clear subcategory when category changes
+  if (name === "categoryId") {
+    setFormData(prev => ({ ...prev, subCategoryId: "" }));
+  }
+};
+
+  console.log("subcategories:", subcategories);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -212,7 +219,7 @@ const [toastType, setToastType] = useState("success");
                   </select>
                 </div>
 
-               <div>
+            <div>
   <label className="block text-sm font-medium text-gray-700 mb-1">
     Subcategory *
   </label>
@@ -225,7 +232,13 @@ const [toastType, setToastType] = useState("success");
     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
   >
     <option value="">
-      {subCategoriesLoading ? "Loading..." : "Select Subcategory"}
+      {subCategoriesLoading 
+        ? "Loading..." 
+        : !formData.categoryId 
+        ? "Select Category First"
+        : subcategories.length === 0
+        ? "No subcategories found in this category"
+        : "Select Subcategory"}
     </option>
     {subcategories.map((sub) => (
       <option key={sub._id} value={sub._id}>

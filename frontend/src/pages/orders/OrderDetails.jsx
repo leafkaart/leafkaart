@@ -4,6 +4,7 @@ import {
   useGetOrderQuery,
   useGetDealersByPincodeQuery,
   useAssignDealerToOrderMutation,
+  useUnassignOrderToDealerMutation,
 } from "../../store/api/ordersApi";
 import {
   ChevronLeft,
@@ -24,7 +25,9 @@ export default function OrderDetail() {
   const { orderId } = useParams();
   console.log("Order ID:", orderId);
   const { data: order, isLoading, error, refetch } = useGetOrderQuery(orderId);
-  
+  const [unassignDealer, { isLoading: isUnassigning }] =
+    useUnassignOrderToDealerMutation();
+
   const [showDealerPanel, setShowDealerPanel] = useState(false);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [assignNotes, setAssignNotes] = useState("");
@@ -42,7 +45,8 @@ export default function OrderDetail() {
     skip: !searchPincode || searchPincode.length < 6,
   });
 
-  const [assignDealer, { isLoading: isAssigning }] = useAssignDealerToOrderMutation();
+  const [assignDealer, { isLoading: isAssigning }] =
+    useAssignDealerToOrderMutation();
 
   const handleSearchDealers = () => {
     if (order?.address?.pincode) {
@@ -64,7 +68,7 @@ export default function OrderDetail() {
         dealerId: selectedDealer._id,
         notes: assignNotes,
       }).unwrap();
-      
+
       alert("Dealer assigned successfully!");
       setShowDealerPanel(false);
       setSelectedDealer(null);
@@ -72,7 +76,28 @@ export default function OrderDetail() {
       refetch();
     } catch (error) {
       console.error("Failed to assign dealer:", error);
-      alert(error?.data?.message || "Failed to assign dealer. Please try again.");
+      alert(
+        error?.data?.message || "Failed to assign dealer. Please try again."
+      );
+    }
+  };
+
+  const handleUnassignDealer = async () => {
+    if (
+      !window.confirm("Are you sure you want to remove the assigned dealer?")
+    ) {
+      return;
+    }
+
+    try {
+      await unassignDealer(orderId).unwrap();
+      alert("Dealer unassigned successfully!");
+      refetch();
+    } catch (error) {
+      console.error("Failed to unassign dealer:", error);
+      alert(
+        error?.data?.message || "Failed to unassign dealer. Please try again."
+      );
     }
   };
 
@@ -134,16 +159,6 @@ export default function OrderDetail() {
             <ChevronLeft className="w-5 h-5 mr-1" />
             Back to Orders
           </button>
-
-          {isAdmin && (
-            <button
-              onClick={handleSearchDealers}
-              className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg font-medium transition"
-            >
-              <Search className="w-4 h-4" />
-              Find Dealers
-            </button>
-          )}
         </div>
       </div>
 
@@ -159,12 +174,13 @@ export default function OrderDetail() {
                     Order #{order.orderNumber}
                   </h1>
                   <p className="text-sm text-gray-600 mt-1">
-                    Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
+                    Placed on{" "}
+                    {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </p>
                 </div>
@@ -236,44 +252,66 @@ export default function OrderDetail() {
               </div>
             </div>
 
-            {/* Assigned Dealers */}
-            {order.dealerAssign && order.dealerAssign.length > 0 && (
+            {/* Assigned Dealer */}
+            {isAdmin && !order.dealerAssign && (
+              <div className="bg-white rounded-lg border p-6 flex items-center justify-between">
+                <p className="text-gray-700">
+                  No dealer assigned to this order yet.
+                </p>
+                <button
+                  onClick={handleSearchDealers}
+                  className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg font-medium shadow-lg transition"
+                >
+                  <Search className="w-4 h-4" />
+                  Find Dealers
+                </button>
+              </div>
+            )}
+            {order.dealerAssign && (
               <div className="bg-white rounded-lg border p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Assigned Dealers
-                </h2>
-                <div className="space-y-3">
-                  {order.dealerAssign.map((assignment, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-4 bg-green-50 rounded-lg"
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Assigned Dealer
+                  </h2>
+                  {isAdmin && (
+                    <button
+                      onClick={handleUnassignDealer}
+                      disabled={isUnassigning}
+                      className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                          <User className="w-5 h-5 text-green-700" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {assignment.dealer?.name || "Dealer"}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {assignment.dealer?.email}
-                          </p>
-                          {assignment.notes && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Note: {assignment.notes}
-                            </p>
-                          )}
-                        </div>
+                      {isUnassigning ? "Removing..." : "Remove Dealer"}
+                    </button>
+                  )}
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                        <User className="w-5 h-5 text-green-700" />
                       </div>
-                      <div className="text-right text-sm text-gray-600">
-                        <p>Assigned by: {assignment.assignedBy?.name}</p>
-                        <p className="text-xs">
-                          {new Date(assignment.assignedAt).toLocaleDateString()}
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {order.dealerAssign.dealer?.name || "Dealer"}
                         </p>
+                        <p className="text-sm text-gray-600">
+                          {order.dealerAssign.dealer?.email}
+                        </p>
+                        {order.dealerAssign.notes && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Note: {order.dealerAssign.notes}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    <div className="text-right text-sm text-gray-600">
+                      <p>Assigned by: {order.dealerAssign.assignedBy?.name}</p>
+                      <p className="text-xs">
+                        {new Date(
+                          order.dealerAssign.assignedAt
+                        ).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -416,6 +454,7 @@ export default function OrderDetail() {
       </div>
 
       {/* Dealer Assignment Panel */}
+
       {showDealerPanel && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">

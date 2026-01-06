@@ -54,6 +54,13 @@ export const ordersApi = createApi({
       }),
       invalidatesTags: ['Orders'],
     }),
+    unassignOrderToDealer: builder.mutation({
+      query: (orderId) => ({
+        url: `/admin/orders/unassignOrderToDealer/${orderId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Orders'],
+    }),
   }),
 });
 
@@ -63,4 +70,5 @@ export const {
   useCreateOrderMutation,
   useAssignDealerToOrderMutation,
   useGetDealersByPincodeQuery,
+  useUnassignOrderToDealerMutation,
 } = ordersApi;

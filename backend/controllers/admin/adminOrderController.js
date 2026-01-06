@@ -136,3 +136,44 @@ exports.assignOrderToDealer = async (req, res) => {
   }
 };
 
+
+exports.unassignOrderToDealer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order id"
+      });
+    }
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+    if (!order.dealerAssign) {
+      return res.status(400).json({
+        success: false,
+        message: "No dealer assigned to this order"
+      });
+    }
+    order.dealerAssign = null;
+    order.status = "order_placed";
+    await order.save();
+    return res.json({
+      success: true,
+      message: "Dealer unassigned successfully"
+    });
+  }
+  catch (err) {
+    console.error("unassignOrderToDealer error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+

@@ -22,7 +22,7 @@ const productsApi = createApi({
  getCategories: builder.query({
   query: () => "/admin/categories/listCategories",
   providesTags: ["Categories"],
-  transformResponse: (response) => response.data || response,
+  transformResponse: (response) => response || response,
 }),
     // Get subcategories by category ID
   getSubCategories: builder.query({
@@ -43,7 +43,13 @@ getSubCategoriesByCategory: builder.query({
   query: (categoryId) =>
     `/admin/subCategories/getSubCategory/${categoryId}`,
   providesTags: ["SubCategories"],
-  transformResponse: (response) => response.data.data || response,
+  transformResponse: (response) => {
+    // Handle the case when no subcategories found
+    if (!response.success && response.message) {
+      return [];
+    }
+    return response.data || response || [];
+  },
 }),
     // Get dealers
     getDealers: builder.query({
