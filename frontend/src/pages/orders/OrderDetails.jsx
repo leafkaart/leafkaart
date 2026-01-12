@@ -122,6 +122,76 @@ export default function OrderDetail() {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
   };
+  const calculateDealerProfit = (products) => {
+    if (!products || products.length === 0) return 0;
+    return products.reduce(
+      (total, product) => total + (product.commission || 0),
+      0
+    );
+  };
+
+  const getMatchingProducts = (dealerProducts) => {
+    if (!order.items || !dealerProducts) return [];
+
+    return order.items
+      .map((orderItem) => {
+        // First try to match by product ID (most accurate)
+        let matchingProduct = dealerProducts.find(
+          (p) => p._id === orderItem.product?._id
+        );
+
+        // If no ID match, try SKU + title combination
+        if (!matchingProduct) {
+          matchingProduct = dealerProducts.find(
+            (p) => p.sku === orderItem.sku && p.title === orderItem.title
+          );
+        }
+
+        // Last resort: just SKU (your current method)
+        if (!matchingProduct) {
+          matchingProduct = dealerProducts.find((p) => p.sku === orderItem.sku);
+        }
+
+        if (matchingProduct) {
+          return {
+            ...matchingProduct,
+            orderQty: orderItem.qty,
+            orderTotal: orderItem.total,
+            potentialCommission: matchingProduct.commission * orderItem.qty,
+            dealerTotal: matchingProduct.dealerPrice * orderItem.qty,
+            customerTotal: matchingProduct.customerPrice * orderItem.qty,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  };
+  const calculatePotentialProfit = (dealerProducts) => {
+    const matching = getMatchingProducts(dealerProducts);
+    return matching.reduce(
+      (total, product) => total + product.potentialCommission,
+      0
+    );
+  };
+
+  const sortDealersByMatch = (dealers) => {
+    return [...dealers].sort((a, b) => {
+      const aMatches = getMatchingProducts(a.products).length;
+      const bMatches = getMatchingProducts(b.products).length;
+
+      // Dealers with matches come first
+      if (aMatches > 0 && bMatches === 0) return -1;
+      if (aMatches === 0 && bMatches > 0) return 1;
+
+      // If both have matches, sort by number of matches (descending)
+      if (aMatches > 0 && bMatches > 0) {
+        return bMatches - aMatches;
+      }
+
+      // Both have no matches, maintain original order
+      return 0;
+    });
+  };
 
   if (isLoading) {
     return (
@@ -492,64 +562,183 @@ export default function OrderDetail() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {dealersData.data.map((dealerObj) => (
-                    <div
-                      key={dealerObj.dealer._id}
-                      className={`border rounded-lg p-4 cursor-pointer transition ${
-                        selectedDealer?._id === dealerObj.dealer._id
-                          ? "border-amber-700 bg-amber-50"
-                          : "border-gray-200 hover:border-amber-300"
-                      }`}
-                      onClick={() => setSelectedDealer(dealerObj.dealer)}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
-                            <User className="w-6 h-6 text-amber-700" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">
-                              {dealerObj.dealer.name}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              {dealerObj.dealer.email}
-                            </p>
-                            {dealerObj.dealer.storeName && (
-                              <p className="text-sm text-gray-500">
-                                Store: {dealerObj.dealer.storeName}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {selectedDealer?._id === dealerObj.dealer._id && (
-                          <CheckCircle className="w-6 h-6 text-amber-700" />
-                        )}
-                      </div>
+                  {sortDealersByMatch(dealersData.data).map(
+                    (dealerObj, index) => {
+                      const matchingProducts = getMatchingProducts(
+                        dealerObj.products
+                      );
+                      const hasMatches = matchingProducts.length > 0;
 
-                      {dealerObj.products && dealerObj.products.length > 0 && (
-                        <div className="mt-3 pt-3 border-t">
-                          <p className="text-sm font-medium text-gray-700 mb-2">
-                            Available Products ({dealerObj.products.length})
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {dealerObj.products.slice(0, 3).map((product) => (
-                              <span
-                                key={product._id}
-                                className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-700"
-                              >
-                                {product.title}
-                              </span>
-                            ))}
-                            {dealerObj.products.length > 3 && (
-                              <span className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-500">
-                                +{dealerObj.products.length - 3} more
-                              </span>
-                            )}
+                      return (
+                        <div
+                          key={dealerObj.dealer._id}
+                          className={`border rounded-lg p-4 cursor-pointer transition ${
+                            selectedDealer?._id === dealerObj.dealer._id
+                              ? "border-amber-700 bg-amber-50"
+                              : hasMatches
+                              ? "border-green-300 bg-green-50 hover:border-green-400"
+                              : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                          }`}
+                          onClick={() => setSelectedDealer(dealerObj.dealer)}
+                        >
+                          {hasMatches && index === 0 && (
+                            <div className="mb-3 -mt-2 -mx-2 px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded-t-lg">
+                              ✓ Recommended - Has matching products
+                            </div>
+                          )}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                                <User className="w-6 h-6 text-amber-700" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900">
+                                  {dealerObj.dealer.name}
+                                </h4>
+                                <p className="text-sm text-gray-600">
+                                  {dealerObj.dealer.email}
+                                </p>
+                                {dealerObj.dealer.storeName && (
+                                  <p className="text-sm text-gray-500">
+                                    Store: {dealerObj.dealer.storeName}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {selectedDealer?._id === dealerObj.dealer._id && (
+                                <CheckCircle className="w-6 h-6 text-amber-700 mb-2" />
+                              )}
+                              {dealerObj.products &&
+                                dealerObj.products.length > 0 && (
+                                  <div className="bg-amber-100 px-3 py-1 rounded-full">
+                                    <p className="text-xs text-gray-600">
+                                      Total Commission
+                                    </p>
+                                    <p className="text-sm font-bold text-amber-700">
+                                      ₹
+                                      {calculateDealerProfit(
+                                        dealerObj.products
+                                      ).toLocaleString()}
+                                    </p>
+                                  </div>
+                                )}
+                            </div>
                           </div>
+
+                          {(() => {
+                            const matchingProducts = getMatchingProducts(
+                              dealerObj.products
+                            );
+                            const hasMatches = matchingProducts.length > 0;
+
+                            return (
+                              <div className="mt-3 pt-3 border-t">
+                                {hasMatches ? (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-sm font-medium text-gray-700">
+                                        Available for this Order (
+                                        {matchingProducts.length} items)
+                                      </p>
+                                      <div className="bg-amber-50 px-2 py-1 rounded">
+                                        <p className="text-xs text-gray-600">
+                                          Total Commission
+                                        </p>
+                                        <p className="text-sm font-bold text-amber-700">
+                                          ₹
+                                          {calculatePotentialProfit(
+                                            dealerObj.products
+                                          ).toLocaleString()}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      {matchingProducts.map((product) => (
+                                        <div
+                                          key={product._id}
+                                          className="border border-amber-300 bg-amber-50 rounded-lg p-3"
+                                        >
+                                          <div className="flex justify-between items-start mb-2">
+                                            <div className="flex-1">
+                                              <p className="font-semibold text-gray-900 text-sm">
+                                                {product.title}
+                                              </p>
+                                              <p className="text-xs text-gray-500 mt-0.5">
+                                                SKU: {product.sku} • Stock:{" "}
+                                                {product.stock}
+                                              </p>
+                                            </div>
+                                            <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-medium">
+                                              Qty: {product.orderQty}
+                                            </span>
+                                          </div>
+
+                                          <div className="grid grid-cols-3 gap-2 text-xs">
+                                            <div className="bg-white rounded p-2">
+                                              <p className="text-gray-600 mb-1">
+                                                Dealer Price
+                                              </p>
+                                              <p className="font-semibold text-gray-900">
+                                                ₹
+                                                {product.dealerPrice?.toLocaleString()}
+                                              </p>
+                                              <p className="text-xs text-gray-500 mt-1">
+                                                Total: ₹
+                                                {product.dealerTotal?.toLocaleString()}
+                                              </p>
+                                            </div>
+                                            <div className="bg-white rounded p-2">
+                                              <p className="text-gray-600 mb-1">
+                                                Customer Price
+                                              </p>
+                                              <p className="font-semibold text-gray-900">
+                                                ₹
+                                                {product.customerPrice?.toLocaleString()}
+                                              </p>
+                                              <p className="text-xs text-gray-500 mt-1">
+                                                Total: ₹
+                                                {product.customerTotal?.toLocaleString()}
+                                              </p>
+                                            </div>
+                                            <div className="bg-white rounded p-2">
+                                              <p className="text-gray-600 mb-1">
+                                                Commission
+                                              </p>
+                                              <p className="font-semibold text-amber-700">
+                                                ₹
+                                                {product.commission?.toLocaleString()}
+                                              </p>
+                                              <p className="text-xs text-amber-600 mt-1">
+                                                Total: ₹
+                                                {product.potentialCommission?.toLocaleString()}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-4 bg-gray-50 rounded-lg">
+                                    <p className="text-sm text-gray-500">
+                                      ⚠️ No matching products available for this
+                                      order
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      This dealer doesn't have the ordered items
+                                      in stock
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      );
+                    }
+                  )}
                 </div>
               )}
             </div>
