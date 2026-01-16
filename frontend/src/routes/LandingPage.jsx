@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import onlylogo from "../assets/onlylogo.png";
 import vocalforlocal from "../assets/vocalforlocal.png";
+import { useNavigate } from "react-router-dom";
 
 function LandingPage() {
   const [floatingElements, setFloatingElements] = useState([0, 0, 0]);
@@ -23,9 +24,7 @@ function LandingPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const navigate = (path) => {
-    console.log(`Navigate to: ${path}`);
-  };
+  const navigate = useNavigate(); 
 
   return (
     <>
