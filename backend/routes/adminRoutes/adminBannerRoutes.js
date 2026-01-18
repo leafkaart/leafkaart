@@ -5,7 +5,7 @@ const { adminOrEmployee } = require('../../middlewares/roleMiddleware');
 const router = express.Router();
 
 router.post('/createBanner', auth, adminOrEmployee, createBanner);
-router.get('/listBanners', auth, adminOrEmployee, listBanners);
+router.get('/listBanners', listBanners);
 router.get('/getBanner', auth, adminOrEmployee, getBanner);
 router.patch('/updateBanner/:id', auth, adminOrEmployee, updateBanner);
 router.delete('/deleteBanner/:id', auth, adminOrEmployee, deleteBanner);
