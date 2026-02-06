@@ -248,7 +248,7 @@ const DealersList = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="py-4 px-6 bg-gray-50 min-h-screen max-w-7xl">
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-6 right-6 z-50 animate-slide-in">
@@ -299,8 +299,8 @@ const DealersList = () => {
         {filtered.length} dealers found
       </p>
 
-      {/* Dealers Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+
+      <div className="bg-white rounded-xl shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto border border-gray-100">
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
@@ -310,9 +310,9 @@ const DealersList = () => {
               <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                 Store Name
               </th>
-              <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+              {/* <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                 Email
-              </th>
+              </th> */}
               <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                 Contact
               </th>
@@ -357,11 +357,11 @@ const DealersList = () => {
                 </td>
 
                 {/* Email */}
-                <td className="py-4 px-4">
+                {/* <td className="py-4 px-4">
                   <div className="flex items-center gap-2 text-gray-600 text-sm">
                     <Mail className="w-4 h-4 text-gray-400" /> {dealer.email}
                   </div>
-                </td>
+                </td> */}
 
                 {/* Mobile */}
                 <td className="py-4 px-4">

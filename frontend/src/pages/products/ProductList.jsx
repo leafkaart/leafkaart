@@ -31,7 +31,7 @@ function ProductList() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role;
   const isDealer = user?.role === "dealer";
-const navigate = useNavigate();
+  const navigate = useNavigate();
   // New product form state
   const [newProduct, setNewProduct] = useState({
     categoryId: "",
@@ -183,7 +183,7 @@ const navigate = useNavigate();
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="max-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-6 py-2">
         {/* Title Bar with Search, Filter, Add Product */}
         <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
@@ -272,7 +272,7 @@ const navigate = useNavigate();
 
         {/* Products Table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[calc(100vh-100px)] overflow-y-auto">
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -341,9 +341,12 @@ const navigate = useNavigate();
                     >
                       {/* Product Info */}
                       <td className="py-4 px-4">
-                        <div className="flex items-center gap-3"     onClick={()=>{
-                          navigate(`${product._id || product.id}`)
-                        }}                >
+                        <div
+                          className="flex items-center gap-3"
+                          onClick={() => {
+                            navigate(`${product._id || product.id}`);
+                          }}
+                        >
                           <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
                             <Package className="w-6 h-6 text-amber-700 opacity-50" />
                           </div>
@@ -364,16 +367,17 @@ const navigate = useNavigate();
                           <p className="font-medium">
                             {product?.categoryId?.name || product.categoryId}
                           </p>
-                          <p className="text-xs text-gray-400">
-                            {product?.subCategoryId?.name || product.subCategory}
-                          </p>
+                          {/* <p className="text-xs text-gray-400">
+                            {product?.subCategoryId?.name ||
+                              product.subCategory}
+                          </p> */}
                         </div>
                       </td>
 
                       {!isDealer && (
                         <td className="py-4 px-4">
                           <span className="text-sm text-gray-600">
-                            {product?.dealerId?.name || product.dealerId  }
+                            {product?.dealerId?.name || product.dealerId}
                           </span>
                         </td>
                       )}

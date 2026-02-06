@@ -136,7 +136,7 @@ function OrderList() {
         )}
 
         {/* Orders Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto border border-gray-100">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100">

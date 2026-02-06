@@ -5,6 +5,7 @@ import socketService from "../../socket.js";
 import { addNotification, setNotifications } from "../../store/slices/notificationSlice.js";
 import { useGetNotificationsQuery } from "../../store/api/notificationApi.js";
 import NotificationBell from "../../components/NotificationBell.jsx";
+import DashboardAnalytics from "../../components/dashboard/DashboardAnalytics.jsx";
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
@@ -71,7 +72,7 @@ const AdminDashboard = () => {
 
           <div className="flex items-center gap-4">
             {/* Notifications Dropdown */}
-           <NotificationBell />
+            <NotificationBell />
 
             {/* Date */}
             <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
@@ -107,7 +108,8 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        
+        {/* Dashboard Analytics Component */}
+        <DashboardAnalytics />
       </main>
     </div>
   );

@@ -148,7 +148,7 @@ const EmployeeList = () => {
   }, []);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="py-4 px-6 bg-gray-50 min-h-screen">
       {showToast && (
         <div className="fixed top-6 right-6 z-50 animate-slide-in">
           <div className="bg-green-700 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]">
@@ -192,7 +192,7 @@ const EmployeeList = () => {
       </p>
 
       {/* Employee Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto border border-gray-100">
         <table className="w-full text-left table-fixed">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
