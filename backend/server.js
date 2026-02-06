@@ -68,8 +68,6 @@ cloudinaryConnect();
 const authRoutes = require("./routes/authRoutes");
 
 // ADMIN ROUTES
-const adminEmployeeRoutes = require("./routes/adminRoutes/adminEmployeeRoutes");
-const adminDealerRoutes = require("./routes/adminRoutes/adminDealerRoutes");
 const adminProductRoutes = require("./routes/adminRoutes/adminProductRoutes");
 const adminCategoryRoutes = require("./routes/adminRoutes/adminCategoryRoutes");
 const adminSubCategoryRoutes = require("./routes/adminRoutes/adminSubCategoryRoutes");
@@ -101,8 +99,6 @@ const bannerRoutes = require("./routes/adminRoutes/adminBannerRoutes");
 ========================= */
 app.use("/api/auth", authRoutes);
 
-app.use("/api/admin/employees", adminEmployeeRoutes);
-app.use("/api/admin/dealers", adminDealerRoutes);
 app.use("/api/admin/products", adminProductRoutes);
 app.use("/api/admin/categories", adminCategoryRoutes);
 app.use("/api/admin/subCategories", adminSubCategoryRoutes);
