@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const SubCategory = require('../../models/SubCategory');
 const Category = require('../../models/Category');
+const { uploadImageToCloudinary } = require("../../utils/imageUploader");
 
 // Create SubCategory
 exports.createSubCategory = async (req, res) => {
@@ -26,7 +27,41 @@ exports.createSubCategory = async (req, res) => {
     if (exists)
       return res.status(409).json({ success: false, message: "SubCategory already exists in this category" });
 
+    // 🔹 Image validation
+    if (!req.files || !req.files.images) {
+      return res.status(400).json({
+        success: false,
+        message: "SubCategory image is required",
+      });
+    }
+
+    const image = req.files.images;
+
+    // Optional: size check (5MB)
+    if (image.size > 5 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        message: "Image size must be less than 5MB",
+      });
+    }
+
+    // 🔹 Upload to Cloudinary
+    const upload = await uploadImageToCloudinary(
+      image,
+      process.env.FOLDER_NAME || "subcategories",
+      500,
+      500
+    );
+
+    if (!upload || !upload.secure_url) {
+      return res.status(500).json({
+        success: false,
+        message: "Image upload failed",
+      });
+    }
+
     const sub = await SubCategory.create({
+      images: upload.secure_url,
       name,
       categoryName: category.name,
       categoryId
@@ -72,10 +107,12 @@ exports.updateSubCategory = async (req, res) => {
     const { id } = req.params;
     const payload = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(id))
+    // 🔹 Validate subcategory id
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: "Invalid id" });
+    }
 
-    // Update categoryName if categoryId is changed
+    // 🔹 Update categoryName if categoryId is changed
     if (payload.categoryId) {
       if (!mongoose.Types.ObjectId.isValid(payload.categoryId)) {
         return res.status(400).json({ success: false, message: "Invalid categoryId" });
@@ -89,15 +126,46 @@ exports.updateSubCategory = async (req, res) => {
       payload.categoryName = cat.name;
     }
 
+    // 🔹 If image is provided → upload and set in payload
+    if (req.files && req.files.image) {
+      const image = req.files.image;
+
+      // size check (5MB)
+      if (image.size > 5 * 1024 * 1024) {
+        return res.status(400).json({
+          success: false,
+          message: "Image size must be less than 5MB",
+        });
+      }
+
+      const upload = await uploadImageToCloudinary(
+        image,
+        process.env.FOLDER_NAME || "subcategories",
+        500,
+        500
+      );
+
+      if (!upload || !upload.secure_url) {
+        return res.status(500).json({
+          success: false,
+          message: "Image upload failed",
+        });
+      }
+
+      // ✅ attach image URL to payload
+      payload.image = upload.secure_url;
+    }
+
     const updated = await SubCategory.findByIdAndUpdate(id, payload, { new: true });
 
-    if (!updated)
+    if (!updated) {
       return res.status(404).json({ success: false, message: "SubCategory not found" });
+    }
 
     res.json({
       success: true,
-      message: "SubCategory updated",
-      data: updated
+      message: "SubCategory updated successfully",
+      data: updated,
     });
 
   } catch (err) {
