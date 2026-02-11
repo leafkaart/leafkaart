@@ -153,7 +153,7 @@ exports.updateSubCategory = async (req, res) => {
       }
 
       // ✅ attach image URL to payload
-      payload.image = upload.secure_url;
+      payload.images = upload.secure_url;
     }
 
     const updated = await SubCategory.findByIdAndUpdate(id, payload, { new: true });

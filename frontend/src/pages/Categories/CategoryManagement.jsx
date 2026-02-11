@@ -13,21 +13,29 @@ import {
   ChevronRight,
 } from "lucide-react";
 import axios from "axios";
-import { 
-  useGetCategoriesQuery, 
+import {
+  useGetCategoriesQuery,
   useGetSubCategoriesQuery,
   useCreateCategoryMutation,
   useUpdateCategoryMutation,
   useCreateSubCategoryMutation,
-  useUpdateSubCategoryMutation
-} from "../../store/api/productsApi"
+  useUpdateSubCategoryMutation,
+} from "../../store/api/productsApi";
 const CategoryManagement = () => {
-  const { data: categoriesData, isLoading: categoriesLoading, refetch: refetchCategories } = useGetCategoriesQuery();
-const { data: subcategoriesData, isLoading: subcategoriesLoading, refetch: refetchSubcategories } = useGetSubCategoriesQuery();
-const [createCategory] = useCreateCategoryMutation();
-const [updateCategory] = useUpdateCategoryMutation();
-const [createSubCategory] = useCreateSubCategoryMutation();
-const [updateSubCategory] = useUpdateSubCategoryMutation();
+  const {
+    data: categoriesData,
+    isLoading: categoriesLoading,
+    refetch: refetchCategories,
+  } = useGetCategoriesQuery();
+  const {
+    data: subcategoriesData,
+    isLoading: subcategoriesLoading,
+    refetch: refetchSubcategories,
+  } = useGetSubCategoriesQuery();
+  const [createCategory] = useCreateCategoryMutation();
+  const [updateCategory] = useUpdateCategoryMutation();
+  const [createSubCategory] = useCreateSubCategoryMutation();
+  const [updateSubCategory] = useUpdateSubCategoryMutation();
   const [search, setSearch] = useState("");
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
@@ -41,69 +49,73 @@ const [updateSubCategory] = useUpdateSubCategoryMutation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteType, setDeleteType] = useState(null); // 'category' or 'subcategory'
-const [categories, setCategories] = useState([]);
-const [subcategories, setSubcategories] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [categoryForm, setCategoryForm] = useState({
     name: "",
+    image: null,
   });
 
   const [subcategoryForm, setSubcategoryForm] = useState({
     name: "",
     categoryId: "",
+    image: null,
   });
-
-  
 
   const [categoryErrors, setCategoryErrors] = useState({});
   const [subcategoryErrors, setSubcategoryErrors] = useState({});
   const isLoadingData = categoriesLoading || subcategoriesLoading || isLoading;
 
   // Mock data for demonstration
-useEffect(() => {
-  if (categoriesData) {
-    // Handle if data is nested in a 'data' property or is directly an array
-    const categoryArray = Array.isArray(categoriesData) 
-      ? categoriesData 
-      : categoriesData.data || [];
-    setCategories(categoryArray);
-  }
-}, [categoriesData]);
+  useEffect(() => {
+    if (categoriesData) {
+      // Handle if data is nested in a 'data' property or is directly an array
+      const categoryArray = Array.isArray(categoriesData)
+        ? categoriesData
+        : categoriesData.data || [];
+      setCategories(categoryArray);
+    }
+  }, [categoriesData]);
 
-useEffect(() => {
-  if (subcategoriesData) {
-    // Handle if data is nested in a 'data' property or is directly an array
-    const subcategoryArray = Array.isArray(subcategoriesData) 
-      ? subcategoriesData 
-      : subcategoriesData.data || [];
-    setSubcategories(subcategoryArray);
-  }
-}, [subcategoriesData]);
+  useEffect(() => {
+    if (subcategoriesData) {
+      // Handle if data is nested in a 'data' property or is directly an array
+      const subcategoryArray = Array.isArray(subcategoriesData)
+        ? subcategoriesData
+        : subcategoriesData.data || [];
+      setSubcategories(subcategoryArray);
+    }
+  }, [subcategoriesData]);
 
   // Toggle category expansion
   const toggleCategory = (categoryId) => {
-    setExpandedCategories(prev => ({
+    setExpandedCategories((prev) => ({
       ...prev,
-      [categoryId]: !prev[categoryId]
+      [categoryId]: !prev[categoryId],
     }));
   };
 
   // Get subcategories for a category with search filter
-const getSubcategoriesForCategory = (categoryId) => {
-  return (subcategories || []).filter(
-    sub => sub.categoryId === categoryId && 
-    sub.name.toLowerCase().includes(search.toLowerCase())
-  );
-};
+  const getSubcategoriesForCategory = (categoryId) => {
+    return (subcategories || []).filter(
+      (sub) =>
+        sub.categoryId === categoryId &&
+        sub.name.toLowerCase().includes(search.toLowerCase())
+    );
+  };
 
   // Filter categories based on search (search in both category and subcategory names)
-const filteredCategories = (categories || []).filter(cat => {
-  const categoryMatches = cat.name.toLowerCase().includes(search.toLowerCase());
-  const hasMatchingSubcategory = (subcategories || []).some(
-    sub => sub.categoryId === cat._id && 
-    sub.name.toLowerCase().includes(search.toLowerCase())
-  );
-  return categoryMatches || hasMatchingSubcategory;
-});
+  const filteredCategories = (categories || []).filter((cat) => {
+    const categoryMatches = cat.name
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    const hasMatchingSubcategory = (subcategories || []).some(
+      (sub) =>
+        sub.categoryId === cat._id &&
+        sub.name.toLowerCase().includes(search.toLowerCase())
+    );
+    return categoryMatches || hasMatchingSubcategory;
+  });
 
   // Toast function
   const showToastMessage = (message, type = "success") => {
@@ -117,6 +129,8 @@ const filteredCategories = (categories || []).filter(cat => {
   const validateCategoryForm = () => {
     const errors = {};
     if (!categoryForm.name.trim()) errors.name = "Category name is required";
+    if (!categoryForm.image && !isEditMode)
+      errors.image = "Category image is required";
     setCategoryErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -128,6 +142,8 @@ const filteredCategories = (categories || []).filter(cat => {
       errors.name = "Subcategory name is required";
     if (!subcategoryForm.categoryId)
       errors.categoryId = "Please select a category";
+    if (!subcategoryForm.image && !isEditMode)
+      errors.image = "Subcategory image is required";
     setSubcategoryErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -144,57 +160,72 @@ const filteredCategories = (categories || []).filter(cat => {
     setSubcategoryErrors({ ...subcategoryErrors, [e.target.name]: "" });
   };
 
-// Submit Category (Create or Update)
-const handleCategorySubmit = async () => {
-  if (!validateCategoryForm()) return;
-  
-  setIsLoading(true);
-  try {
-    if (isEditMode) {
-      await updateCategory({ id: editingId, data: categoryForm }).unwrap();
-      showToastMessage("Category updated successfully!", "success");
-    } else {
-      await createCategory(categoryForm).unwrap();
-      showToastMessage("Category added successfully!", "success");
-    }
-    refetchCategories();
-    closeCategoryModal();
-  } catch (error) {
-    console.error("Error:", error);
-    showToastMessage(
-      error?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} category`,
-      "error"
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
+  // Submit Category (Create or Update)
+  const handleCategorySubmit = async () => {
+    if (!validateCategoryForm()) return;
 
-// Submit Subcategory (Create or Update)
-const handleSubcategorySubmit = async () => {
-  if (!validateSubcategoryForm()) return;
-  
-  setIsLoading(true);
-  try {
-    if (isEditMode) {
-      await updateSubCategory({ id: editingId, data: subcategoryForm }).unwrap();
-      showToastMessage("Subcategory updated successfully!", "success");
-    } else {
-      await createSubCategory(subcategoryForm).unwrap();
-      showToastMessage("Subcategory added successfully!", "success");
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", categoryForm.name);
+      if (categoryForm.image) {
+        formData.append("images", categoryForm.image);
+      }
+
+      if (isEditMode) {
+        await updateCategory({ id: editingId, data: formData }).unwrap();
+        showToastMessage("Category updated successfully!", "success");
+      } else {
+        await createCategory(formData).unwrap();
+        showToastMessage("Category added successfully!", "success");
+      }
+      refetchCategories();
+      closeCategoryModal();
+    } catch (error) {
+      console.error("Error:", error);
+      showToastMessage(
+        error?.data?.message ||
+          `Failed to ${isEditMode ? "update" : "create"} category`,
+        "error"
+      );
+    } finally {
+      setIsLoading(false);
     }
-    refetchSubcategories();
-    closeSubcategoryModal();
-  } catch (error) {
-    console.error("Error:", error);
-    showToastMessage(
-      error?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} subcategory`,
-      "error"
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
+
+  // Submit Subcategory (Create or Update)
+  const handleSubcategorySubmit = async () => {
+    if (!validateSubcategoryForm()) return;
+
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", subcategoryForm.name);
+      formData.append("categoryId", subcategoryForm.categoryId);
+      if (subcategoryForm.image) {
+        formData.append("images", subcategoryForm.image);
+      }
+
+      if (isEditMode) {
+        await updateSubCategory({ id: editingId, data: formData }).unwrap();
+        showToastMessage("Subcategory updated successfully!", "success");
+      } else {
+        await createSubCategory(formData).unwrap();
+        showToastMessage("Subcategory added successfully!", "success");
+      }
+      refetchSubcategories();
+      closeSubcategoryModal();
+    } catch (error) {
+      console.error("Error:", error);
+      showToastMessage(
+        error?.data?.message ||
+          `Failed to ${isEditMode ? "update" : "create"} subcategory`,
+        "error"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Edit Category
   const handleEditCategory = (category) => {
@@ -219,10 +250,9 @@ const handleSubcategorySubmit = async () => {
 
   // Delete Category
   const handleDeleteCategory = async (id) => {
-
     console.log("Delete Category ID:", id);
     setDeleteTarget(id);
-    setDeleteType('category');
+    setDeleteType("category");
     setShowDeleteModal(true);
   };
 
@@ -230,37 +260,45 @@ const handleSubcategorySubmit = async () => {
   const handleDeleteSubcategory = async (id) => {
     console.log("Delete Subcategory ID:", id);
     setDeleteTarget(id);
-    setDeleteType('subcategory');
+    setDeleteType("subcategory");
     setShowDeleteModal(true);
   };
 
-// Confirm Delete
-const confirmDelete = async () => {
-  setIsLoading(true);
-  try {
-    if (deleteType === 'category') {
-      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/admin/categories/deleteCategory/${deleteTarget}`);
-      showToastMessage("Category deleted successfully!", "success");
-      refetchCategories(); // Add this line
-      refetchSubcategories(); // Add this line
-    } else {
-      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/admin/subCategories/deleteSubCategory/${deleteTarget}`);
-      showToastMessage("Subcategory deleted successfully!", "success");
-      refetchSubcategories(); // Add this line
+  // Confirm Delete
+  const confirmDelete = async () => {
+    setIsLoading(true);
+    try {
+      if (deleteType === "category") {
+        await axios.delete(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/admin/categories/deleteCategory/${deleteTarget}`
+        );
+        showToastMessage("Category deleted successfully!", "success");
+        refetchCategories(); // Add this line
+        refetchSubcategories(); // Add this line
+      } else {
+        await axios.delete(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/admin/subCategories/deleteSubCategory/${deleteTarget}`
+        );
+        showToastMessage("Subcategory deleted successfully!", "success");
+        refetchSubcategories(); // Add this line
+      }
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
+      setDeleteType(null);
+    } catch (error) {
+      console.error("Error deleting:", error);
+      showToastMessage(
+        error?.response?.data?.message || `Failed to delete ${deleteType}`,
+        "error"
+      );
+    } finally {
+      setIsLoading(false);
     }
-    setShowDeleteModal(false);
-    setDeleteTarget(null);
-    setDeleteType(null);
-  } catch (error) {
-    console.error("Error deleting:", error);
-    showToastMessage(
-      error?.response?.data?.message || `Failed to delete ${deleteType}`,
-      "error"
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
   // Cancel Delete
   const cancelDelete = () => {
     setShowDeleteModal(false);
@@ -268,23 +306,20 @@ const confirmDelete = async () => {
     setDeleteType(null);
   };
 
-  // Close Modals
   const closeCategoryModal = () => {
     setShowCategoryModal(false);
-    setCategoryForm({ name: "" });
+    setCategoryForm({ name: "", image: null });
     setCategoryErrors({});
     setIsEditMode(false);
     setEditingId(null);
   };
-
   const closeSubcategoryModal = () => {
     setShowSubcategoryModal(false);
-    setSubcategoryForm({ name: "", categoryId: "" });
+    setSubcategoryForm({ name: "", categoryId: "", image: null });
     setSubcategoryErrors({});
     setIsEditMode(false);
     setEditingId(null);
   };
-
   // Get Category Name by ID
   const getCategoryName = (categoryId) => {
     const category = categories.find((cat) => cat._id === categoryId);
@@ -316,13 +351,13 @@ const confirmDelete = async () => {
       )}
 
       {/* Loading Overlay */}
-    {isLoadingData && (
-  <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-40">
-    <div className="bg-white p-4 rounded-lg shadow-xl">
-      <Loader2 className="w-8 h-8 animate-spin text-amber-800" />
-    </div>
-  </div>
-)}
+      {isLoadingData && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-40">
+          <div className="bg-white p-4 rounded-lg shadow-xl">
+            <Loader2 className="w-8 h-8 animate-spin text-amber-800" />
+          </div>
+        </div>
+      )}
 
       {/* Header - Fixed */}
       <div className="flex-shrink-0 p-6 bg-gray-50">
@@ -357,11 +392,16 @@ const confirmDelete = async () => {
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           {filteredCategories.map((category) => {
-            const categorySubcategories = getSubcategoriesForCategory(category._id);
+            const categorySubcategories = getSubcategoriesForCategory(
+              category._id
+            );
             const isExpanded = expandedCategories[category._id];
 
             return (
-              <div key={category._id} className="border-b border-gray-100 last:border-b-0">
+              <div
+                key={category._id}
+                className="border-b border-gray-100 last:border-b-0"
+              >
                 {/* Category Row */}
                 <div className="flex items-center justify-between p-4 hover:bg-gray-50 transition">
                   <div className="flex items-center gap-3 flex-1">
@@ -375,9 +415,17 @@ const confirmDelete = async () => {
                         <ChevronRight className="w-5 h-5 text-gray-600" />
                       )}
                     </button>
-                    <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                      <FolderTree className="w-5 h-5 text-amber-700" />
-                    </div>
+                    {category.images ? (
+                      <img
+                        src={category.images}
+                        alt={category.name}
+                        className="w-10 h-10 rounded-lg object-cover border border-amber-200"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <FolderTree className="w-5 h-5 text-amber-700" />
+                      </div>
+                    )}
                     <div>
                       <p className="font-semibold text-gray-800 text-sm">
                         {category.name}
@@ -391,7 +439,11 @@ const confirmDelete = async () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
-                        setSubcategoryForm({ name: "", categoryId: category._id });
+                        setSubcategoryForm({
+                          name: "",
+                          categoryId: category._id,
+                          image: null,
+                        });
                         setShowSubcategoryModal(true);
                       }}
                       className="p-2 hover:bg-green-50 rounded-lg transition text-green-600"
@@ -425,9 +477,17 @@ const confirmDelete = async () => {
                         className="flex items-center justify-between p-4 pl-16 hover:bg-gray-100 transition border-b border-gray-100 last:border-b-0"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                            <Tag className="w-4 h-4 text-green-700" />
-                          </div>
+                          {subcategory.images ? (
+                            <img
+                              src={subcategory.images}
+                              alt={subcategory.name}
+                              className="w-8 h-8 rounded-lg object-cover border border-green-200"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                              <Tag className="w-4 h-4 text-green-700" />
+                            </div>
+                          )}
                           <p className="font-medium text-gray-800 text-sm">
                             {subcategory.name}
                           </p>
@@ -441,7 +501,9 @@ const confirmDelete = async () => {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteSubcategory(subcategory._id)}
+                            onClick={() =>
+                              handleDeleteSubcategory(subcategory._id)
+                            }
                             className="p-2 hover:bg-red-50 rounded-lg transition text-red-600"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -454,7 +516,9 @@ const confirmDelete = async () => {
 
                 {isExpanded && categorySubcategories.length === 0 && (
                   <div className="bg-gray-50 border-t border-gray-100 p-8 text-center">
-                    <p className="text-gray-500 text-sm">No subcategories found</p>
+                    <p className="text-gray-500 text-sm">
+                      No subcategories found
+                    </p>
                   </div>
                 )}
               </div>
@@ -506,8 +570,39 @@ const confirmDelete = async () => {
                   </p>
                 )}
               </div>
-            </div>
 
+              {/* NEW: Image Upload Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category Image *
+                </label>
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/*"
+                  onChange={(e) => {
+                    setCategoryForm({
+                      ...categoryForm,
+                      image: e.target.files[0],
+                    });
+                    setCategoryErrors({ ...categoryErrors, image: "" });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    categoryErrors.image ? "border-red-500" : "border-gray-200"
+                  }`}
+                />
+                {categoryErrors.image && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {categoryErrors.image}
+                  </p>
+                )}
+                {categoryForm.image && (
+                  <p className="text-green-600 text-xs mt-1">
+                    Selected: {categoryForm.image.name}
+                  </p>
+                )}
+              </div>
+            </div>
             <div className="flex items-center justify-end gap-3 p-5 border-t bg-gray-50">
               <button
                 onClick={closeCategoryModal}
@@ -594,8 +689,41 @@ const confirmDelete = async () => {
                   </p>
                 )}
               </div>
-            </div>
 
+              {/* NEW: Image Upload Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Subcategory Image *
+                </label>
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/*"
+                  onChange={(e) => {
+                    setSubcategoryForm({
+                      ...subcategoryForm,
+                      image: e.target.files[0],
+                    });
+                    setSubcategoryErrors({ ...subcategoryErrors, image: "" });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    subcategoryErrors.image
+                      ? "border-red-500"
+                      : "border-gray-200"
+                  }`}
+                />
+                {subcategoryErrors.image && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {subcategoryErrors.image}
+                  </p>
+                )}
+                {subcategoryForm.image && (
+                  <p className="text-green-600 text-xs mt-1">
+                    Selected: {subcategoryForm.image.name}
+                  </p>
+                )}
+              </div>
+            </div>
             <div className="flex items-center justify-end gap-3 p-5 border rounded-2xl bg-gray-50">
               <button
                 onClick={closeSubcategoryModal}
@@ -623,16 +751,15 @@ const confirmDelete = async () => {
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
                 <Trash2 className="w-6 h-6 text-red-600" />
               </div>
-              
+
               <h2 className="text-xl font-bold text-gray-800 text-center mb-2">
-                Delete {deleteType === 'category' ? 'Category' : 'Subcategory'}?
+                Delete {deleteType === "category" ? "Category" : "Subcategory"}?
               </h2>
-              
+
               <p className="text-gray-600 text-center text-sm mb-6">
-                {deleteType === 'category' 
+                {deleteType === "category"
                   ? "This will permanently delete this category and all its subcategories. This action cannot be undone."
-                  : "This will permanently delete this subcategory. This action cannot be undone."
-                }
+                  : "This will permanently delete this subcategory. This action cannot be undone."}
               </p>
 
               <div className="flex items-center gap-3">

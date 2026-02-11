@@ -32,7 +32,7 @@ exports.createCategory = async (req, res) => {
         message: "Image size must be less than 5MB",
       });
     }
-
+x
     // 🔹 Upload to Cloudinary
     const upload = await uploadImageToCloudinary(
       image,
