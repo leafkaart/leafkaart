@@ -15,7 +15,6 @@ exports.createCategory = async (req, res) => {
       return res.status(409).json({ success: false, message: "Category already exists" });
     }
 
-    // 🔹 Image validation
     if (!req.files || !req.files.images) {
       return res.status(400).json({
         success: false,
@@ -23,17 +22,15 @@ exports.createCategory = async (req, res) => {
       });
     }
 
-    const image = req.files.images; // single image
+    const image = req.files.images;
 
-    // Optional: size check (5MB)
     if (image.size > 5 * 1024 * 1024) {
       return res.status(400).json({
         success: false,
         message: "Image size must be less than 5MB",
       });
     }
-x
-    // 🔹 Upload to Cloudinary
+
     const upload = await uploadImageToCloudinary(
       image,
       process.env.FOLDER_NAME || "categories",
