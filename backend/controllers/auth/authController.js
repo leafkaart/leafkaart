@@ -166,3 +166,31 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+exports.getUserDetails = async (req, res) => {
+  try {
+    const user = req.user;
+    res.status(200).json({ user });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.updateUserDetails = async (req, res) => {
+  try {
+    const { name, mobile } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { name, mobile },
+      { new: true }
+    ).select("-password");
+
+    res.status(200).json({
+      message: "User updated successfully",
+      user: updatedUser
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

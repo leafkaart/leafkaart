@@ -1,8 +1,11 @@
 const express = require('express');
-const { register, verifyOtp, login, logout, forgotPassword, resetPassword } = require('../controllers/auth/authController');
+const { register, verifyOtp, login, logout, forgotPassword, resetPassword, getUserDetails, updateUserDetails } = require('../controllers/auth/authController');
 const { dealerRegister, getAllDealers, updateDealer, deleteDealer } = require('../controllers/auth/dealerRegister');
 const { employeeRegister, getAllEmployees, updateEmployee, deleteEmployee } = require('../controllers/auth/employeeRegister');
 const { customerRegister, getAllCustomers, updateCustomer, deleteCustomer } = require('../controllers/auth/customerRegister');
+
+const auth = require('../middlewares/authMiddleware');
+
 const router = express.Router();
 
 router.post('/register', register);
@@ -11,6 +14,8 @@ router.post('/login', login);
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.get('/getUserDetails', auth, getUserDetails);
+router.patch('/updateUserDetails', auth, updateUserDetails);
 
 router.post('/dealer-register', dealerRegister);
 router.get("/getAllDealers", getAllDealers);
