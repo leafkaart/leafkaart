@@ -55,7 +55,8 @@ exports.createOrder = async (req, res) => {
       // --- ADD SNAPSHOT DATA ---
       item.title = product.title;
       item.sku = product.sku;
-      item.price = product.customerPrice; // or product.offerPrice if using offers
+      // item.price = product.customerPrice; // or product.offerPrice if using offers
+      item.price = product.customerPrice || product.dealerPrice;
       item.total = item.price * item.qty;
       item.dealer = product.dealerId;
       item.product = new mongoose.Types.ObjectId(item.product); // <-- FIX
@@ -119,7 +120,11 @@ exports.createOrder = async (req, res) => {
 
 exports.listOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id })
+    const orders = await Order.find()
+      .populate("user", "name email mobile")
+      .populate("address")
+      .populate("items.product", "title sku brand images customerPrice")
+      .populate("items.dealer", "name mobile")
       .sort({ createdAt: -1 });
 
     return res.json({
@@ -138,12 +143,11 @@ exports.listOrders = async (req, res) => {
 
 exports.getOrder = async (req, res) => {
   try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      user: req.user._id
-    })
-      .populate("items.product")
+    const order = await Order.findById(req.params.id)
+      .populate("user", "name email mobile")
       .populate("address")
+      .populate("items.product")
+      .populate("items.dealer");
 
     if (!order) {
       return res.status(404).json({
@@ -164,3 +168,4 @@ exports.getOrder = async (req, res) => {
     });
   }
 };
+
