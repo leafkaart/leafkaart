@@ -3,10 +3,28 @@ const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
 const Address = require("../../models/Address");
+const { uploadImageToCloudinary } = require("../../utils/imageUploader");
 
 exports.createOrder = async (req, res) => {
   try {
-    const { items, address, shippingCharges = 0, taxAmount = 0, discount = 0, grandTotal } = req.body;
+    const { 
+      items, 
+      address, 
+      shippingCharges = 0, 
+      taxAmount = 0, 
+      discount = 0, 
+      grandTotal,
+      paymentMethod,
+      paymentStatus = false
+    } = req.body;
+
+    // --- VALIDATE PAYMENT METHOD ---
+    if (!paymentMethod || !['EMI', 'Cash On Delivery', 'QR'].includes(paymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid payment method is required (EMI, Cash On Delivery, or QR)",
+      });
+    }
 
     // --- VALIDATE ITEMS ---
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -21,9 +39,34 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid address ID" });
     }
 
-    const addressExists = await Address.findOne({ _id: new mongoose.Types.ObjectId(address), user: req.user._id });
+    const addressExists = await Address.findOne({ 
+      _id: new mongoose.Types.ObjectId(address), 
+      user: req.user._id 
+    });
     if (!addressExists) {
       return res.status(404).json({ success: false, message: "Address not found" });
+    }
+
+    // --- UPLOAD PAYMENT IMAGE (if provided) ---
+    let paymentImageUrl = null;
+    if (req.files && req.files.paymentImage) {
+      const paymentImage = req.files.paymentImage;
+      
+      const upload = await uploadImageToCloudinary(
+        paymentImage,
+        process.env.FOLDER_NAME || "payments",
+        1000,
+        1000
+      );
+
+      if (!upload.secure_url) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to upload payment image" 
+        });
+      }
+
+      paymentImageUrl = upload.secure_url;
     }
 
     // --- VALIDATE PRODUCTS & STOCK ---
@@ -36,30 +79,41 @@ exports.createOrder = async (req, res) => {
       }
 
       if (!mongoose.Types.ObjectId.isValid(item.product)) {
-        return res.status(400).json({ success: false, message: `Invalid product ID: ${item.product}` });
+        return res.status(400).json({ 
+          success: false, 
+          message: `Invalid product ID: ${item.product}` 
+        });
       }
 
       const product = await Product.findById(new mongoose.Types.ObjectId(item.product));
       if (!product) {
-        return res.status(404).json({ success: false, message: `Product not found: ${item.product}` });
+        return res.status(404).json({ 
+          success: false, 
+          message: `Product not found: ${item.product}` 
+        });
       }
 
       if (!product.isActive || !product.isApproved) {
-        return res.status(400).json({ success: false, message: `Product not available: ${product.title}` });
+        return res.status(400).json({ 
+          success: false, 
+          message: `Product not available: ${product.title}` 
+        });
       }
 
       if (product.stock < item.qty) {
-        return res.status(400).json({ success: false, message: `Insufficient stock for ${product.title}` });
+        return res.status(400).json({ 
+          success: false, 
+          message: `Insufficient stock for ${product.title}` 
+        });
       }
 
       // --- ADD SNAPSHOT DATA ---
       item.title = product.title;
       item.sku = product.sku;
-      // item.price = product.customerPrice; // or product.offerPrice if using offers
       item.price = product.customerPrice || product.dealerPrice;
       item.total = item.price * item.qty;
       item.dealer = product.dealerId;
-      item.product = new mongoose.Types.ObjectId(item.product); // <-- FIX
+      item.product = new mongoose.Types.ObjectId(item.product);
     }
 
     // --- CALCULATE TOTALS ---
@@ -87,8 +141,11 @@ exports.createOrder = async (req, res) => {
       taxAmount,
       discount,
       grandTotal: computedGrandTotal,
-      address: new mongoose.Types.ObjectId(address), // <-- FIX
+      address: new mongoose.Types.ObjectId(address),
       payment: req.body.payment || null,
+      paymentMethod,
+      paymentImage: paymentImageUrl,
+      paymentStatus: paymentStatus === 'true' || paymentStatus === true,
       timeline: [
         {
           status: "order_placed",
@@ -104,7 +161,10 @@ exports.createOrder = async (req, res) => {
     }
 
     // --- CLEAR CART ---
-    await Cart.findOneAndUpdate({ user: req.user._id }, { $set: { items: [], totalAmount: 0 } });
+    await Cart.findOneAndUpdate(
+      { user: req.user._id }, 
+      { $set: { items: [], totalAmount: 0 } }
+    );
 
     return res.json({
       success: true,
@@ -117,6 +177,7 @@ exports.createOrder = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 exports.listOrders = async (req, res) => {
   try {
