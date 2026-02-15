@@ -18,7 +18,6 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  Edit,
 } from "lucide-react";
 import AddProductPage from "./AddProductPage";
 import { useNavigate } from "react-router-dom";
@@ -283,10 +282,11 @@ function ProductList() {
                   <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                     Category
                   </th>
-
-                  <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
-                    Dealer
-                  </th>
+                  {!isDealer && (
+                    <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
+                      Dealer
+                    </th>
+                  )}
 
                   <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                     SKU
@@ -300,10 +300,11 @@ function ProductList() {
                   <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                     Status
                   </th>
-
-                  <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
-                    Actions
-                  </th>
+                  {!isDealer && (
+                    <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
 
@@ -311,7 +312,7 @@ function ProductList() {
                 {productsLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="border-t border-gray-50">
-                      <td colSpan="7" className="py-4 px-4">
+                      <td colSpan={!isDealer ? "7" : "6"} className="py-4 px-4">
                         <div className="animate-pulse flex items-center gap-3">
                           <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
                           <div className="flex-1 space-y-2">
@@ -413,49 +414,31 @@ function ProductList() {
                         {product.isApproved === true ? "Approved" : "Pending"}
                       </td>
 
-                      <td className="py-4 px-4">
-                        <div className="flex items-center justify-center gap-2">
-                          {!isDealer && (
-                            <>
-                              <button
-                                onClick={() =>
-                                  handleApprove(product._id || product.id)
-                                }
-                                className="p-1.5 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition"
-                                title="Approve"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleDecline(product._id || product.id)
-                                }
-                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition"
-                                title="Decline"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-
-                          {/* Edit button - Admin sees all, Dealer sees only their products */}
-                          {(!isDealer ||
-                            product.dealerId?._id === user._id ||
-                            product.dealerId === user._id) && (
+                      {/* Actions - Only for Admin */}
+                      {!isDealer && (
+                        <td className="py-4 px-4">
+                          <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() =>
-                                navigate(
-                                  `/edit-product/${product._id || product.id}`
-                                )
+                                handleApprove(product._id || product.id)
                               }
-                              className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition"
-                              title="Edit"
+                              className="p-1.5 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition"
+                              title="Approve"
                             >
-                              <Eye className="w-4 h-4" />
+                              <CheckCircle className="w-4 h-4" />
                             </button>
-                          )}
-                        </div>
-                      </td>
+                            <button
+                              onClick={() =>
+                                handleDecline(product._id || product.id)
+                              }
+                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition"
+                              title="Decline"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
