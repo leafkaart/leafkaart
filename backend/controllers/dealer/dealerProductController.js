@@ -1,6 +1,6 @@
-const Product = require('../../models/Product');
-const Category = require('../../models/Category');
-const SubCategory = require('../../models/SubCategory');
+const Product = require("../../models/Product");
+const Category = require("../../models/Category");
+const SubCategory = require("../../models/SubCategory");
 const { uploadImageToCloudinary } = require("../../utils/imageUploader");
 const { getIO } = require("../../socket");
 const Notification = require("../../models/Notification");
@@ -15,30 +15,40 @@ exports.createProduct = async (req, res) => {
       stock,
       sku,
       brand,
-      shortDescription
+      shortDescription,
     } = req.body;
 
     if (!title || title.trim() === "")
-      return res.status(400).json({ success: false, message: "Title is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Title is required" });
 
     if (!categoryId)
-      return res.status(400).json({ success: false, message: "Category ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Category ID is required" });
 
     if (!subCategoryId)
-      return res.status(400).json({ success: false, message: "Sub-category ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Sub-category ID is required" });
 
     if (stock != null && stock < 0)
-      return res.status(400).json({ success: false, message: "Stock cannot be negative" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Stock cannot be negative" });
 
     const category = await Category.findById(categoryId);
     if (!category)
-      return res.status(404).json({ success: false, message: "Category not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
 
     const sub = await SubCategory.findOne({ _id: subCategoryId, categoryId });
     if (!sub)
       return res.status(404).json({
         success: false,
-        message: "Sub-category not found for selected category"
+        message: "Sub-category not found for selected category",
       });
 
     let uploadedImages = [];
@@ -70,12 +80,14 @@ exports.createProduct = async (req, res) => {
       );
 
       if (!upload || !upload.secure_url)
-        return res.status(500).json({ success: false, message: "Image upload failed" });
+        return res
+          .status(500)
+          .json({ success: false, message: "Image upload failed" });
 
       uploadedImages.push({
         url: upload.secure_url,
         alt: title || "Product image",
-        order: i + 1
+        order: i + 1,
       });
     }
 
@@ -113,7 +125,6 @@ exports.createProduct = async (req, res) => {
       message: "Product created successfully",
       data: product,
     });
-
   } catch (err) {
     console.error("createProduct error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -133,7 +144,6 @@ exports.listProducts = async (req, res) => {
       .populate("dealerId", "name email");
 
     res.status(200).json({ success: true, data: products });
-
   } catch (err) {
     console.error("listProducts error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -144,14 +154,15 @@ exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findOne({
       _id: req.params.id,
-      dealerId: req.user._id
+      dealerId: req.user._id,
     });
 
     if (!product)
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
 
     res.status(200).json({ success: true, data: product });
-
   } catch (err) {
     console.error("getProduct error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -175,7 +186,9 @@ exports.updateProduct = async (req, res) => {
       if (!Array.isArray(images)) images = [images];
 
       if (images.length > 6)
-        return res.status(400).json({ success: false, message: "Max 6 images allowed" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Max 6 images allowed" });
 
       for (let img of images) {
         const upload = await uploadImageToCloudinary(
@@ -186,7 +199,9 @@ exports.updateProduct = async (req, res) => {
         );
 
         if (!upload.secure_url)
-          return res.status(500).json({ success: false, message: "Failed to upload image" });
+          return res
+            .status(500)
+            .json({ success: false, message: "Failed to upload image" });
 
         uploadedImages.push(upload.secure_url);
       }
@@ -195,13 +210,18 @@ exports.updateProduct = async (req, res) => {
     }
 
     const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, dealerId: req.user._id },
+      {
+        _id: req.params.id,
+        ...(req.user.role === "dealer" && { dealerId: req.user._id }),
+      },
       updates,
       { new: true, runValidators: true }
     );
 
     if (!product)
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
 
     // ---------------- Real-time Socket Event ----------------
     io.emit("product:updated", product);
@@ -209,9 +229,8 @@ exports.updateProduct = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Product updated successfully",
-      data: product
+      data: product,
     });
-
   } catch (err) {
     console.error("updateProduct error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -222,20 +241,21 @@ exports.deleteProduct = async (req, res) => {
   try {
     const product = await Product.findOneAndDelete({
       _id: req.params.id,
-      dealerId: req.user._id
+      dealerId: req.user._id,
     });
 
     if (!product)
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
 
     // ---------------- Real-time Socket Event ----------------
     io.emit("product:deleted", { id: req.params.id });
 
     res.status(200).json({
       success: true,
-      message: "Product deleted successfully"
+      message: "Product deleted successfully",
     });
-
   } catch (err) {
     console.error("deleteProduct error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -247,7 +267,9 @@ exports.updateStock = async (req, res) => {
     const { stock } = req.body;
 
     if (stock == null || stock < 0)
-      return res.status(400).json({ success: false, message: "Valid stock value required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Valid stock value required" });
 
     const product = await Product.findOneAndUpdate(
       { _id: req.params.id, dealerId: req.user._id },
@@ -256,7 +278,9 @@ exports.updateStock = async (req, res) => {
     );
 
     if (!product)
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
 
     // ---------------- Real-time Socket Event ----------------
     io.emit("product:stockUpdated", product);
@@ -264,9 +288,8 @@ exports.updateStock = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Stock updated",
-      data: product
+      data: product,
     });
-
   } catch (err) {
     console.error("updateStock error:", err);
     res.status(500).json({ success: false, message: "Server error" });
