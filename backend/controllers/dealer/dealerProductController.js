@@ -224,7 +224,7 @@ exports.updateProduct = async (req, res) => {
         .json({ success: false, message: "Product not found" });
 
     // ---------------- Real-time Socket Event ----------------
-    io.emit("product:updated", product);
+    // io.emit("product:updated", product);
 
     res.status(200).json({
       success: true,

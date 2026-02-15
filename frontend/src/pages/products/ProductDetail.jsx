@@ -57,11 +57,13 @@ export default function ProductDetail() {
         brand: product.brand || "",
         dealerPrice: product.dealerPrice || "",
         stock: product.stock || "",
-        categoryId: product.categoryId?._id || "",
-        subCategoryId: product.subCategoryId?._id || "",
+        categoryId: product.categoryId || "",
+        subCategoryId: product.subCategoryId|| "",
       });
     }
   }, [product]);
+
+  console.log("Product Data:", product);
 
   const handleUpdateProduct = async () => {
     setIsSaving(true);
