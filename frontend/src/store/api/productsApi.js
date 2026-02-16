@@ -19,38 +19,40 @@ const productsApi = createApi({
   tagTypes: ["Products", "Categories", "SubCategories", "Dealers"],
   endpoints: (builder) => ({
     // Get all categories
- getCategories: builder.query({
-  query: () => "/admin/categories/listCategories",
-  providesTags: ["Categories"],
-  transformResponse: (response) => response || response,
-}),
+    getCategories: builder.query({
+      query: () => "/admin/categories/listCategories",
+      providesTags: ["Categories"],
+      transformResponse: (response) => response || response,
+    }),
     // Get subcategories by category ID
-  getSubCategories: builder.query({
-  query: () => "/admin/subCategories/listSubCategories",
-  providesTags: ["SubCategories"],
-  transformResponse: (response) => {
-    const data = response.data || response;
+    getSubCategories: builder.query({
+      query: () => "/admin/subCategories/listSubCategories",
+      providesTags: ["SubCategories"],
+      transformResponse: (response) => {
+        const data = response.data || response;
 
-    console.log("SubCategories Response:", response);
-    // Transform categoryId from object to string
-    return Array.isArray(data) ? data.map(sub => ({
-      ...sub,
-      categoryId:  sub.categoryId?._id
-    })) : data;
-  },
-}),
-getSubCategoriesByCategory: builder.query({
-  query: (categoryId) =>
-    `/admin/subCategories/getSubCategory/${categoryId}`,
-  providesTags: ["SubCategories"],
-  transformResponse: (response) => {
-    // Handle the case when no subcategories found
-    if (!response.success && response.message) {
-      return [];
-    }
-    return response.data || response || [];
-  },
-}),
+        console.log("SubCategories Response:", response);
+        // Transform categoryId from object to string
+        return Array.isArray(data)
+          ? data.map((sub) => ({
+              ...sub,
+              categoryId: sub.categoryId?._id,
+            }))
+          : data;
+      },
+    }),
+    getSubCategoriesByCategory: builder.query({
+      query: (categoryId) =>
+        `/admin/subCategories/getSubCategory/${categoryId}`,
+      providesTags: ["SubCategories"],
+      transformResponse: (response) => {
+        // Handle the case when no subcategories found
+        if (!response.success && response.message) {
+          return [];
+        }
+        return response.data || response || [];
+      },
+    }),
     // Get dealers
     getDealers: builder.query({
       query: () => "/auth/getAllDealers",
@@ -64,10 +66,11 @@ getSubCategoriesByCategory: builder.query({
         if (categoryId) params.append("categoryId", categoryId);
         if (subCategoryId) params.append("subCategoryId", subCategoryId);
         if (search) params.append("search", search);
-        const queryString = params.toString();
-        return `/dealer/products/listProducts${
-          queryString ? `?${queryString}` : ""
-        }`;
+
+        return {
+          url: "/dealer/products/listProducts",
+          params: Object.fromEntries(params),
+        };
       },
       providesTags: ["Products"],
       transformResponse: (response) => response.data,
@@ -79,43 +82,43 @@ getSubCategoriesByCategory: builder.query({
       transformResponse: (response) => response.product,
     }),
     createCategory: builder.mutation({
-  query: (data) => ({
-    url: "/admin/categories/createCategory",
-    method: "POST",
-    body: data,
-  }),
-  invalidatesTags: ["Categories"],
-}),
+      query: (data) => ({
+        url: "/admin/categories/createCategory",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Categories"],
+    }),
 
-// Update category
-updateCategory: builder.mutation({
-  query: ({ id, data }) => ({
-    url: `/admin/categories/updateCategory/${id}`,
-    method: "PATCH",
-    body: data,
-  }),
-  invalidatesTags: ["Categories"],
-}),
+    // Update category
+    updateCategory: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/admin/categories/updateCategory/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["Categories"],
+    }),
 
-// Create subcategory
-createSubCategory: builder.mutation({
-  query: (data) => ({
-    url: "/admin/subCategories/createSubCategory",
-    method: "POST",
-    body: data,
-  }),
-  invalidatesTags: ["SubCategories"],
-}),
+    // Create subcategory
+    createSubCategory: builder.mutation({
+      query: (data) => ({
+        url: "/admin/subCategories/createSubCategory",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["SubCategories"],
+    }),
 
-// Update subcategory
-updateSubCategory: builder.mutation({
-  query: ({ id, data }) => ({
-    url: `/admin/subCategories/updateSubCategory/${id}`,
-    method: "PATCH",
-    body: data,
-  }),
-  invalidatesTags: ["SubCategories"],
-}),
+    // Update subcategory
+    updateSubCategory: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/admin/subCategories/updateSubCategory/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["SubCategories"],
+    }),
 
     // Create new product
     createProduct: builder.mutation({
@@ -133,14 +136,13 @@ updateSubCategory: builder.mutation({
       }),
       invalidatesTags: ["Products"],
     }),
-     rejectProduct: builder.mutation({
+    rejectProduct: builder.mutation({
       query: (productId) => ({
         url: `/admin/products/rejectProduct/${productId}`,
         method: "PATCH",
       }),
       invalidatesTags: ["Products"],
     }),
-
   }),
 });
 

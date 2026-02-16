@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { ChevronLeft, Plus,CheckCircle  } from "lucide-react";
+import { ChevronLeft, Plus, CheckCircle } from "lucide-react";
 import ImageUploadSection from "./ImageUploadSection";
-import { useGetSubCategoriesQuery,  useCreateProductMutation, useGetSubCategoriesByCategoryQuery} from "../../store/api/productsApi"; 
-function AddProductPage({
-  onBack,
-  categories,
-  dealers,
-  isDealer,
-  user,
-}) {
+import { toast } from "react-toastify";
+
+import {
+  useGetSubCategoriesQuery,
+  useCreateProductMutation,
+  useGetSubCategoriesByCategoryQuery,
+} from "../../store/api/productsApi";
+function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
   const [formData, setFormData] = useState({
     categoryId: "",
     subCategoryId: "",
@@ -21,39 +21,43 @@ function AddProductPage({
     stock: "",
   });
   const [showToast, setShowToast] = useState(false);
-const [toastMessage, setToastMessage] = useState("");
-const [toastType, setToastType] = useState("success");
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
- const { data: subcategoriesResponse, isLoading: subCategoriesLoading, error: subCategoriesError } =
-  useGetSubCategoriesByCategoryQuery(formData.categoryId, {
+  const {
+    data: subcategoriesResponse,
+    isLoading: subCategoriesLoading,
+    error: subCategoriesError,
+  } = useGetSubCategoriesByCategoryQuery(formData.categoryId, {
     skip: !formData.categoryId,
   });
-const subcategories = subCategoriesError || !subcategoriesResponse ? [] : subcategoriesResponse;
-    const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
+  const subcategories =
+    subCategoriesError || !subcategoriesResponse ? [] : subcategoriesResponse;
+  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
 
-    const showToastMessage = (message, type = "success") => {
-  setToastMessage(message);
-  setToastType(type);
-  setShowToast(true);
-  setTimeout(() => setShowToast(false), 3000);
-};
+  const showToastMessage = (message, type = "success") => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
- const handleInputChange = (e) => {
-  const { name, value } = e.target;
-  setFormData((prev) => ({
-    ...prev,
-    [name]: value,
-    // Reset subcategory when category changes
-    ...(name === "categoryId" ? { subCategoryId: "" } : {}),
-  }));
-  
-  // Clear subcategory when category changes
-  if (name === "categoryId") {
-    setFormData(prev => ({ ...prev, subCategoryId: "" }));
-  }
-};
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      // Reset subcategory when category changes
+      ...(name === "categoryId" ? { subCategoryId: "" } : {}),
+    }));
+
+    // Clear subcategory when category changes
+    if (name === "categoryId") {
+      setFormData((prev) => ({ ...prev, subCategoryId: "" }));
+    }
+  };
 
   console.log("subcategories:", subcategories);
 
@@ -71,7 +75,6 @@ const subcategories = subCategoriesError || !subcategoriesResponse ? [] : subcat
       showToastMessage("Please fill all required fields", "error");
       return;
     }
-
 
     if (images.length === 0) {
       showToastMessage("Please upload at least one product image", "error");
@@ -116,12 +119,15 @@ const subcategories = subCategoriesError || !subcategoriesResponse ? [] : subcat
       const result = await createProduct(formDataToSend).unwrap();
 
       if (result.success) {
-        alert("Product added successfully!");
+        toast.success("Product added successfully", { autoClose: 1200 });
+
         // Clean up image previews
         images.forEach((img) => URL.revokeObjectURL(img.preview));
         onBack();
       } else {
-        alert(result.message || "Failed to add product");
+        toast.error(result.message || "Failed to add product", {
+          autoClose: 1200,
+        });
       }
     } catch (error) {
       console.error("Error adding product:", error);
@@ -130,7 +136,6 @@ const subcategories = subCategoriesError || !subcategoriesResponse ? [] : subcat
       setLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -145,7 +150,6 @@ const subcategories = subCategoriesError || !subcategoriesResponse ? [] : subcat
             Back to Products
           </button>
           <h1 className="text-xl font-bold text-gray-800">Add New Product</h1>
-          
         </div>
 
         {/* Form */}
@@ -219,34 +223,34 @@ const subcategories = subCategoriesError || !subcategoriesResponse ? [] : subcat
                   </select>
                 </div>
 
-            <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    Subcategory *
-  </label>
-  <select
-    name="subCategoryId"
-    value={formData.subCategoryId}
-    onChange={handleInputChange}
-    required
-    disabled={!formData.categoryId || subCategoriesLoading}
-    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-  >
-    <option value="">
-      {subCategoriesLoading 
-        ? "Loading..." 
-        : !formData.categoryId 
-        ? "Select Category First"
-        : subcategories.length === 0
-        ? "No subcategories found in this category"
-        : "Select Subcategory"}
-    </option>
-    {subcategories.map((sub) => (
-      <option key={sub._id} value={sub._id}>
-        {sub.name}
-      </option>
-    ))}
-  </select>
-</div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Subcategory *
+                  </label>
+                  <select
+                    name="subCategoryId"
+                    value={formData.subCategoryId}
+                    onChange={handleInputChange}
+                    required
+                    disabled={!formData.categoryId || subCategoriesLoading}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {subCategoriesLoading
+                        ? "Loading..."
+                        : !formData.categoryId
+                        ? "Select Category First"
+                        : subcategories.length === 0
+                        ? "No subcategories found in this category"
+                        : "Select Subcategory"}
+                    </option>
+                    {subcategories.map((sub) => (
+                      <option key={sub._id} value={sub._id}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Brand & SKU */}

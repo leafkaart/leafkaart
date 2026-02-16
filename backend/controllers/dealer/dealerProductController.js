@@ -134,8 +134,29 @@ exports.createProduct = async (req, res) => {
 exports.listProducts = async (req, res) => {
   try {
     let filter = {};
+    
+    // Role-based filter
     if (req.user.role === "dealer") {
       filter.dealerId = req.user._id;
+    }
+
+    // Category filter
+    if (req.query.categoryId) {
+      filter.categoryId = req.query.categoryId;
+    }
+
+    // Subcategory filter
+    if (req.query.subCategoryId) {
+      filter.subCategoryId = req.query.subCategoryId;
+    }
+
+    // Search filter
+    if (req.query.search) {
+      filter.$or = [
+        { title: { $regex: req.query.search, $options: "i" } },
+        { shortDescription: { $regex: req.query.search, $options: "i" } },
+        { sku: { $regex: req.query.search, $options: "i" } },
+      ];
     }
 
     const products = await Product.find(filter)
@@ -149,7 +170,6 @@ exports.listProducts = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findOne({

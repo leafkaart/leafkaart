@@ -7,6 +7,7 @@ import {
   useGetSubCategoriesQuery,
   useApproveProductMutation,
   useRejectProductMutation,
+  useGetSubCategoriesByCategoryQuery,
 } from "../../store/api/productsApi";
 import {
   ChevronDown,
@@ -53,14 +54,17 @@ function ProductList() {
   const categories = categoriesResponse?.data ?? [];
 
   // Subcategories for filter dropdown
-  const { data: subCategories, isLoading: subCategoriesLoading } =
-    useGetSubCategoriesQuery(selectedCategory, { skip: !selectedCategory });
+  const { data: subCategoriesResponse, isLoading: subCategoriesLoading } =
+    useGetSubCategoriesByCategoryQuery(selectedCategory, {
+      skip: !selectedCategory,
+    });
+  const subCategories = subCategoriesResponse || [];
 
   // Subcategories for modal dropdown
   const {
     data: modalSubCategoriesResponse,
     isLoading: modalSubCategoriesLoading,
-  } = useGetSubCategoriesQuery(newProduct.categoryId, {
+  } = useGetSubCategoriesByCategoryQuery(newProduct.categoryId, {
     skip: !newProduct.categoryId,
   });
   const modalSubCategories = modalSubCategoriesResponse ?? [];
@@ -337,18 +341,18 @@ function ProductList() {
                   products.map((product) => (
                     <tr
                       key={product._id || product.id}
-                      className="border-t border-gray-50 hover:bg-gray-50 transition"
+                      className="border-t border-gray-50 hover:bg-gray-200 transition"
                     >
                       {/* Product Info */}
                       <td className="py-4 px-4">
                         <div
-                          className="flex items-center gap-3"
+                          className="flex items-center gap-3 cursor-pointer"
                           onClick={() => {
                             navigate(`${product._id || product.id}`);
                           }}
                         >
-                          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                            <Package className="w-6 h-6 text-amber-700 opacity-50" />
+                          <div className="min-w-12 min-h-12 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                            <Package className=" text-amber-700 opacity-50" />
                           </div>
                           <div>
                             <p className="font-semibold text-gray-800 text-sm line-clamp-1">
