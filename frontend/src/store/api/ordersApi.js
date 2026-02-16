@@ -40,6 +40,22 @@ export const ordersApi = createApi({
       invalidatesTags: ['Orders'],
     }),
 
+    updateOrderStatus: builder.mutation({
+  query: ({ orderId, status }) => ({
+    url: `/orders/${orderId}/status`,
+    method: "PATCH",
+    body: { status },
+  }),
+  invalidatesTags: ["Order"],
+}),
+updatePaymentStatus: builder.mutation({
+  query: ({ orderId, paymentStatus }) => ({
+    url: `/orders/${orderId}/payment-status`,
+    method: "PATCH",
+    body: { paymentStatus },
+  }),
+  invalidatesTags: ["Order"],
+}),
      getDealersByPincode: builder.query({
       query: (pinCode) => `/admin/products/dealers-by-pincode/${pinCode}`,
       transformResponse: (response) => response,
@@ -71,4 +87,6 @@ export const {
   useAssignDealerToOrderMutation,
   useGetDealersByPincodeQuery,
   useUnassignOrderToDealerMutation,
+  useUpdateOrderStatusMutation,
+  useUpdatePaymentStatusMutation,
 } = ordersApi;

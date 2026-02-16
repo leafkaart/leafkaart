@@ -162,9 +162,9 @@ function OrderList() {
                   <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                     Status
                   </th>
-                  <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
+                  {/* <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
                     Actions
-                  </th>
+                  </th> */}
                 </tr>
               </thead>
 
@@ -194,14 +194,15 @@ function OrderList() {
                   filteredOrders.map((order) => (
                     <tr
                       key={order._id || order.id}
-                      className="border-t border-gray-50 hover:bg-gray-50 transition"
+                      onClick={() => handleViewOrder(order._id || order.id)}
+                      className="border-t border-gray-50 hover:bg-gray-200 transition cursor-pointer"
                     >
                       {/* Order Number */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center">
+                          {/* <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center">
                             <Package className="w-5 h-5 text-amber-700" />
-                          </div>
+                          </div> */}
                           <div>
                             <p className="font-semibold text-gray-800 text-sm">
                               {order.orderNumber}
@@ -273,7 +274,7 @@ function OrderList() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-4">
+                      {/* <td className="py-4 px-4">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleViewOrder(order._id || order.id)}
@@ -283,7 +284,7 @@ function OrderList() {
                             <Eye className="w-4 h-4" />
                           </button>
                         </div>
-                      </td>
+                      </td> */}
                     </tr>
                   ))
                 )}
