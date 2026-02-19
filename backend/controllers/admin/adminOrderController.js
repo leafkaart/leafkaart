@@ -18,7 +18,12 @@ exports.listOrders = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate('items.product', 'title sku price'),
+        // Populate references
+        .populate('items.product', 'title sku price')
+        .populate('user', 'name email phone')
+        .populate('address', 'line1 line2 city state zip')
+        .populate('dealerAssign.dealer', 'name email')
+        .populate('timeline.changedBy', 'name email'),
       Order.countDocuments(filter)
     ]);
 
@@ -35,7 +40,6 @@ exports.listOrders = async (req, res) => {
 exports.getOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Get order id:", id);
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
