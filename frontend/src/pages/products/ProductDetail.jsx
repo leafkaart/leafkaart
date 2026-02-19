@@ -326,7 +326,7 @@ export default function ProductDetail() {
                 )}
               </div>
               {/* Rating */}
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <div className="flex items-center bg-green-600 text-white px-2 py-1 rounded text-sm font-semibold">
                   {product.rating.toFixed(1)}
                   <Star className="w-3 h-3 ml-1 fill-current" />
@@ -335,10 +335,10 @@ export default function ProductDetail() {
                   {product.ratingCount}{" "}
                   {product.ratingCount === 1 ? "Rating" : "Ratings"}
                 </span>
-              </div>
+              </div> */}
 
               {/* Price */}
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <div className="bg-gray-50 rounded-lg  space-y-3">
                 <div>
                   <div className="text-sm text-gray-600 mb-1">Dealer Price</div>
                   {isEditMode ? (
