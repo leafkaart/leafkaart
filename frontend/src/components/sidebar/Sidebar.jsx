@@ -89,7 +89,7 @@ const Sidebar = () => {
       label: "Orders", 
       icon: User, 
       getRolePath: (role) => `/${role}/orders`,
-      roles: ["admin","employee"] 
+      roles: ["admin","employee","dealer"] 
     },
   ];
 

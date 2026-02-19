@@ -86,10 +86,10 @@ const router = createBrowserRouter([
     ),
   },
   {
-  path: "/waiting-for-approval",
+    path: "/waiting-for-approval",
     element: (
       <SuspenseWrapper>
-       <WaitingForApproval/>
+        <WaitingForApproval />
       </SuspenseWrapper>
     ),
   },
@@ -198,29 +198,29 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path:"banners",
+        path: "banners",
         element: (
           <SuspenseWrapper>
-           <BannerManagement/>
+            <BannerManagement />
           </SuspenseWrapper>
         ),
       },
       {
-        path:"orders",
+        path: "orders",
         element: (
           <SuspenseWrapper>
-           <OrderList/>
+            <OrderList />
           </SuspenseWrapper>
         ),
       },
       {
-        path:"orders/:orderId",
+        path: "orders/:orderId",
         element: (
           <SuspenseWrapper>
-           <OrderDetails/>
+            <OrderDetails />
           </SuspenseWrapper>
         ),
-      }
+      },
     ],
   },
   {
@@ -252,6 +252,22 @@ const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <ProductList />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: "orders",
+        element: (
+          <SuspenseWrapper>
+            <OrderList />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: "orders/:orderId",
+        element: (
+          <SuspenseWrapper>
+            <OrderDetails />
           </SuspenseWrapper>
         ),
       },
@@ -314,13 +330,13 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path:"orders",
+        path: "orders",
         element: (
           <SuspenseWrapper>
-           <OrderList/>
+            <OrderList />
           </SuspenseWrapper>
         ),
-      }
+      },
     ],
   },
   {

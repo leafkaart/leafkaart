@@ -395,90 +395,102 @@ export default function OrderDetail() {
                   )}
                 </div>
                 {/* Payment Proof Modal */}
-{showPaymentProof && (
-  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden">
-      <div className="flex items-center justify-between p-4 border-b">
-        <h3 className="text-lg font-bold text-gray-800">
-          {order.paymentMethod === "EMI" ? "PAN Card" : "Payment Proof"}
-        </h3>
-        <button
-          onClick={() => setShowPaymentProof(false)}
-          className="p-1 hover:bg-gray-100 rounded-lg transition"
-        >
-          <XCircle className="w-5 h-5 text-gray-500" />
-        </button>
-      </div>
-      <div className="p-4">
-        <img
-          src={order.paymentImage}
-          alt={order.paymentMethod === "EMI" ? "PAN Card" : "Payment Proof"}
-          className="w-full h-auto rounded-lg"
-        />
-      </div>
-    </div>
-  </div>
-)}
+                {showPaymentProof && (
+                  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden">
+                      <div className="flex items-center justify-between p-4 border-b">
+                        <h3 className="text-lg font-bold text-gray-800">
+                          {order.paymentMethod === "EMI"
+                            ? "PAN Card"
+                            : "Payment Proof"}
+                        </h3>
+                        <button
+                          onClick={() => setShowPaymentProof(false)}
+                          className="p-1 hover:bg-gray-100 rounded-lg transition"
+                        >
+                          <XCircle className="w-5 h-5 text-gray-500" />
+                        </button>
+                      </div>
+                      <div className="p-4">
+                        <img
+                          src={order.paymentImage}
+                          alt={
+                            order.paymentMethod === "EMI"
+                              ? "PAN Card"
+                              : "Payment Proof"
+                          }
+                          className="w-full h-auto rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-{/* Status Update Modal */}
-{showStatusModal && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-      <div className="flex items-center justify-between p-5 border-b">
-        <h3 className="text-lg font-bold text-gray-800">Update Order Status</h3>
-        <button
-          onClick={() => {
-            setShowStatusModal(false);
-            setNewStatus("");
-          }}
-          className="p-1 hover:bg-gray-100 rounded-lg transition"
-        >
-          <XCircle className="w-5 h-5 text-gray-500" />
-        </button>
-      </div>
-      <div className="p-5 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select New Status
-          </label>
-          <select
-            value={newStatus}
-            onChange={(e) => setNewStatus(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            <option value="order_placed">Order Placed</option>
-            <option value="processing">Processing</option>
-            <option value="packed">Packed</option>
-            <option value="ready_for_dispatch">Ready for Dispatch</option>
-            <option value="shipped">Shipped</option>
-            <option value="out_for_delivery">Out for Delivery</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="returned">Returned</option>
-          </select>
-        </div>
-        <div className="flex items-center justify-end gap-3 pt-4">
-          <button
-            onClick={() => {
-              setShowStatusModal(false);
-              setNewStatus("");
-            }}
-            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleUpdateOrderStatus}
-            disabled={isUpdatingStatus}
-            className="px-6 py-2 text-sm font-medium bg-amber-700 hover:bg-amber-800 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isUpdatingStatus ? "Updating..." : "Update Status"}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+                {/* Status Update Modal */}
+                {showStatusModal && (
+                  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                      <div className="flex items-center justify-between p-5 border-b">
+                        <h3 className="text-lg font-bold text-gray-800">
+                          Update Order Status
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setShowStatusModal(false);
+                            setNewStatus("");
+                          }}
+                          className="p-1 hover:bg-gray-100 rounded-lg transition"
+                        >
+                          <XCircle className="w-5 h-5 text-gray-500" />
+                        </button>
+                      </div>
+                      <div className="p-5 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select New Status
+                          </label>
+                          <select
+                            value={newStatus}
+                            onChange={(e) => setNewStatus(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          >
+                            <option value="order_placed">Order Placed</option>
+                            <option value="processing">Processing</option>
+                            <option value="packed">Packed</option>
+                            <option value="ready_for_dispatch">
+                              Ready for Dispatch
+                            </option>
+                            <option value="shipped">Shipped</option>
+                            <option value="out_for_delivery">
+                              Out for Delivery
+                            </option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="returned">Returned</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 pt-4">
+                          <button
+                            onClick={() => {
+                              setShowStatusModal(false);
+                              setNewStatus("");
+                            }}
+                            className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleUpdateOrderStatus}
+                            disabled={isUpdatingStatus}
+                            className="px-6 py-2 text-sm font-medium bg-amber-700 hover:bg-amber-800 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isUpdatingStatus ? "Updating..." : "Update Status"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Order Items */}
@@ -507,11 +519,13 @@ export default function OrderDetail() {
                         <p className="text-sm text-gray-600">
                           Quantity: {item.qty}
                         </p>
-                        {item.dealer && (
-                          <p className="text-sm text-amber-700 font-medium">
-                            Dealer: {item.dealer.name || "Assigned"}
-                          </p>
-                        )}
+
+                        <p className="text-sm text-amber-700 font-medium">
+                          Dealer:{" "}
+                          {order?.dealerAssign?.dealer.name
+                            ? "Assigned"
+                            : "Not Assigned"}
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">
