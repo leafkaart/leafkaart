@@ -21,7 +21,6 @@ const CustomersList = () => {
     name: "",
     email: "",
     mobile: "",
-    address: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -58,15 +57,17 @@ const CustomersList = () => {
       name: formData.name,
       email: formData.email,
       mobile: formData.mobile,
-      address: formData.address,
     };
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/customer-register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/auth/customer-register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await res.json();
 
@@ -96,7 +97,6 @@ const CustomersList = () => {
       name: "",
       email: "",
       mobile: "",
-      address: "",
     });
     setErrors({});
   };
@@ -193,9 +193,7 @@ const CustomersList = () => {
               <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                 Contact
               </th>
-              <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                Address
-              </th>
+               <th className="py-3 px-4 font-medium text-gray-600 text-sm">Registered On</th>
             </tr>
           </thead>
 
@@ -229,17 +227,19 @@ const CustomersList = () => {
                 {/* Contact */}
                 <td className="py-4 px-4">
                   <div className="flex items-center gap-2 text-gray-600 text-sm">
-                    <Phone className="w-4 h-4 text-gray-400" /> {customer.mobile}
+                    <Phone className="w-4 h-4 text-gray-400" />{" "}
+                    {customer.mobile}
                   </div>
                 </td>
-
-                {/* Address */}
                 <td className="py-4 px-4">
-                  <div className="flex items-center gap-2 text-gray-600 text-sm">
-                    <MapPin className="w-4 h-4 text-gray-400" /> 
-                    {customer.address || "N/A"}
-                  </div>
-                </td>
+  <p className="text-sm text-gray-600">
+    {new Date(customer.createdAt).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })}
+  </p>
+</td>
               </tr>
             ))}
 
@@ -258,10 +258,11 @@ const CustomersList = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b">
-              <h2 className="text-lg font-bold text-gray-800">Add New Customer</h2>
+              <h2 className="text-lg font-bold text-gray-800">
+                Add New Customer
+              </h2>
               <button
                 onClick={closeModal}
                 className="p-1 hover:bg-gray-100 rounded-lg transition"
@@ -272,7 +273,6 @@ const CustomersList = () => {
 
             {/* Modal Body */}
             <div className="p-5 space-y-4">
-
               {/* Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -283,8 +283,9 @@ const CustomersList = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? "border-red-500" : "border-gray-200"
-                    }`}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.name ? "border-red-500" : "border-gray-200"
+                  }`}
                   placeholder="Enter full name"
                 />
                 {errors.name && (
@@ -302,8 +303,9 @@ const CustomersList = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? "border-red-500" : "border-gray-200"
-                    }`}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.email ? "border-red-500" : "border-gray-200"
+                  }`}
                   placeholder="email@example.com"
                 />
                 {errors.email && (
@@ -321,28 +323,14 @@ const CustomersList = () => {
                   name="mobile"
                   value={formData.mobile}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.mobile ? "border-red-500" : "border-gray-200"
-                    }`}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.mobile ? "border-red-500" : "border-gray-200"
+                  }`}
                   placeholder="10-digit number"
                 />
                 {errors.mobile && (
                   <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>
                 )}
-              </div>
-
-              {/* Address */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address
-                </label>
-                <textarea
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  rows="3"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter address (optional)"
-                />
               </div>
             </div>
 

@@ -18,9 +18,15 @@ exports.dealerRegister = async (req, res) => {
     } = req.body;
 
     if (
-      !name || !email || !password || !mobile ||
-      !storeName || !storeGstin || !panCard ||
-      !storeAddress || !pinCode
+      !name ||
+      !email ||
+      !password ||
+      !mobile ||
+      !storeName ||
+      !storeGstin ||
+      !panCard ||
+      !storeAddress ||
+      !pinCode
     ) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -47,7 +53,7 @@ exports.dealerRegister = async (req, res) => {
       status: "pending",
     });
 
-    const notification = await Notification.create({                   
+    const notification = await Notification.create({
       message: `New Dealer Registered: ${user.name}`,
       type: "dealer",
       isRead: false,
@@ -64,7 +70,6 @@ exports.dealerRegister = async (req, res) => {
       message: "Dealer registration successful. Wait for admin approval.",
       userId: user._id,
     });
-
   } catch (err) {
     console.error("Dealer Registration Error:", err);
     return res.status(500).json({ message: "Internal server error" });
@@ -93,7 +98,7 @@ exports.getAllDealers = async (req, res) => {
 exports.updateDealer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, isVerified } = req.body;
+    const { status, isVerified, isActive } = req.body;
 
     const allowedStatus = ["approved", "rejected", "pending"];
     if (status && !allowedStatus.includes(status)) {
@@ -107,7 +112,9 @@ exports.updateDealer = async (req, res) => {
     }
 
     dealer.status = status || dealer.status;
-    dealer.isVerified = isVerified !== undefined ? isVerified : dealer.isVerified;
+    dealer.isVerified =
+      isVerified !== undefined ? isVerified : dealer.isVerified;
+    dealer.isActive = isActive !== undefined ? isActive : dealer.isActive;
 
     await dealer.save();
 

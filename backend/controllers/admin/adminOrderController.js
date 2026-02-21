@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const Order = require('../../models/Order');
+const mongoose = require("mongoose");
+const Order = require("../../models/Order");
 const { sendEmail } = require("../../utils/emailService");
 const dealerTemplate = require("../../utils/dealerAssignedTemplate");
 const customerTemplate = require("../../utils/customerAssignedTemplate");
@@ -21,21 +21,21 @@ exports.listOrders = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate('items.product', 'title sku price')
-        .populate('user', 'name email phone')
-        .populate('address', 'line1 line2 city state zip')
-        .populate('dealerAssign.dealer', 'name email')
-        .populate('timeline.changedBy', 'name email'),
-      Order.countDocuments(filter)
+        .populate("items.product", "title sku price")
+        .populate("user", "name email phone")
+        .populate("address", "line1 line2 city state zip")
+        .populate("dealerAssign.dealer", "name email")
+        .populate("timeline.changedBy", "name email"),
+      Order.countDocuments(filter),
     ]);
 
     res.json({
       success: true,
-      data: { orders, total, page: Number(page), limit: Number(limit) }
+      data: { orders, total, page: Number(page), limit: Number(limit) },
     });
   } catch (err) {
-    console.error('listOrders err', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("listOrders err", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -56,7 +56,7 @@ exports.getOrder = async (req, res) => {
       .populate("address")
       .populate("items.product", "title slug sku price")
       .populate("dealerAssign.dealer", "name email")
-      .populate("dealerAssign.assignedBy", "name email")
+      .populate("dealerAssign.assignedBy", "name email");
 
     if (!order) {
       return res.status(404).json({
@@ -105,7 +105,7 @@ exports.updateOrderStatus = async (req, res) => {
         status: status || order.status,
         notes: notes || "",
         changedBy: req.user._id,
-        at: new Date()
+        at: new Date(),
       });
     }
 
@@ -122,9 +122,8 @@ exports.updateOrderStatus = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Order status updated successfully",
-      data: updatedOrder
+      data: updatedOrder,
     });
-
   } catch (err) {
     console.error("updateOrderStatus error:", err);
     return res.status(500).json({
@@ -166,9 +165,11 @@ exports.updatePaymentStatus = async (req, res) => {
     // Add timeline entry
     order.timeline.push({
       status: order.status,
-      notes: `Payment updated: ${isPaid ? "Paid" : "Pending"} via ${paymentMethod || "N/A"}`,
+      notes: `Payment updated: ${isPaid ? "Paid" : "Pending"} via ${
+        paymentMethod || "N/A"
+      }`,
       changedBy: req.user._id,
-      at: new Date()
+      at: new Date(),
     });
 
     await order.save();
@@ -185,9 +186,8 @@ exports.updatePaymentStatus = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Payment status updated successfully",
-      data: updatedOrder
+      data: updatedOrder,
     });
-
   } catch (err) {
     console.error("updatePaymentStatus error:", err);
     return res.status(500).json({
@@ -205,14 +205,14 @@ exports.assignOrderToDealer = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid order id"
+        message: "Invalid order id",
       });
     }
 
     if (!mongoose.Types.ObjectId.isValid(dealerId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid dealer id"
+        message: "Invalid dealer id",
       });
     }
 
@@ -220,21 +220,21 @@ exports.assignOrderToDealer = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found"
+        message: "Order not found",
       });
     }
 
     if (order.dealerAssign) {
       return res.status(400).json({
         success: false,
-        message: "Dealer already assigned to this order"
+        message: "Dealer already assigned to this order",
       });
     }
 
     order.dealerAssign = {
       dealer: dealerId,
       assignedBy: req.user._id,
-      notes
+      notes,
     };
 
     order.status = "processing";
@@ -254,7 +254,7 @@ exports.assignOrderToDealer = async (req, res) => {
           updatedOrder.dealerAssign.dealer.name,
           updatedOrder.orderNumber,
           updatedOrder.user.name
-        )
+        ),
       });
     }
 
@@ -266,25 +266,23 @@ exports.assignOrderToDealer = async (req, res) => {
           updatedOrder.user.name,
           updatedOrder.orderNumber,
           updatedOrder.dealerAssign.dealer.name
-        )
+        ),
       });
     }
 
     return res.json({
       success: true,
       message: "Dealer assigned successfully",
-      data: updatedOrder
+      data: updatedOrder,
     });
-
   } catch (err) {
     console.error("assignOrderToDealer error:", err);
     return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
-
 
 exports.unassignOrderToDealer = async (req, res) => {
   try {
@@ -292,20 +290,20 @@ exports.unassignOrderToDealer = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid order id"
+        message: "Invalid order id",
       });
     }
     const order = await Order.findById(id);
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found"
+        message: "Order not found",
       });
     }
     if (!order.dealerAssign) {
       return res.status(400).json({
         success: false,
-        message: "No dealer assigned to this order"
+        message: "No dealer assigned to this order",
       });
     }
     order.dealerAssign = null;
@@ -313,16 +311,13 @@ exports.unassignOrderToDealer = async (req, res) => {
     await order.save();
     return res.json({
       success: true,
-      message: "Dealer unassigned successfully"
+      message: "Dealer unassigned successfully",
     });
-  }
-  catch (err) {
+  } catch (err) {
     console.error("unassignOrderToDealer error:", err);
     return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
-
-

@@ -324,81 +324,103 @@ export default function OrderDetail() {
                     {formatStatus(order.status)}
                   </span>
                 </div>
+                <div className="pt-4 border-t space-y-3">
+                  {/* Status Indicators Row */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Payment Status Badge */}
+                    <span
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                        order.isPaid
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      {order.isPaid ? "Paid" : "Payment Pending"}
+                    </span>
 
-                <div className="flex items-center gap-4 pt-4 border-t flex-wrap">
-                  <div
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-                      order.isPaid
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    {order.isPaid ? "Paid" : "Payment Pending"}
-                  </div>
+                    {/* Payment Method Badge */}
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      <CreditCard className="w-3.5 h-3.5" />
+                      {order.paymentMethod}
+                    </span>
 
-                  {/* Payment Method */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
-                    <CreditCard className="w-4 h-4" />
-                    {order.paymentMethod}
-                  </div>
-
-                  {/* Payment Proof Button - Only for QR and EMI */}
-                  {(order.paymentMethod === "QR" ||
-                    order.paymentMethod === "EMI") &&
-                    order.paymentImage && (
-                      <button
-                        onClick={() => setShowPaymentProof(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
-                      >
-                        <Package className="w-4 h-4" />
-                        View{" "}
-                        {order.paymentMethod === "EMI"
-                          ? "PAN Card"
-                          : "Payment Proof"}
-                      </button>
-                    )}
-
-                  {/* Payment Status Toggle - Admin Only */}
-                  {isAdmin && (
-                    <button
-                      onClick={handleUpdatePaymentStatus}
-                      disabled={isUpdatingPayment}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                    {/* Payment Verified Badge */}
+                    <span
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
                         order.paymentStatus
-                          ? "bg-green-100 text-green-700 hover:bg-green-200"
-                          : "bg-red-100 text-red-700 hover:bg-red-200"
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
                     >
                       {order.paymentStatus ? (
-                        <CheckCircle className="w-4 h-4" />
+                        <CheckCircle className="w-3.5 h-3.5" />
                       ) : (
-                        <XCircle className="w-4 h-4" />
+                        <XCircle className="w-3.5 h-3.5" />
                       )}
                       Payment{" "}
                       {order.paymentStatus ? "Verified" : "Not Verified"}
-                    </button>
-                  )}
+                    </span>
+                  </div>
 
-                  {/* Update Status Button - Admin Only */}
-                  {isAdmin && (
-                    <button
-                      onClick={() => {
-                        setNewStatus(order.status);
-                        setShowStatusModal(true);
-                      }}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 transition"
-                    >
-                      <Truck className="w-4 h-4" />
-                      Update Status
-                    </button>
-                  )}
+                  {/* Divider */}
+                  <div className="border-t border-dashed border-gray-200" />
+
+                  {/* Action Buttons Row */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* View Payment Proof - Only for QR and EMI */}
+                    {(order.paymentMethod === "QR" ||
+                      order.paymentMethod === "EMI") &&
+                      order.paymentImage && (
+                        <button
+                          onClick={() => setShowPaymentProof(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-medium transition"
+                        >
+                          <Package className="w-4 h-4" />
+                          {order.paymentMethod === "EMI"
+                            ? "View PAN Card"
+                            : "View Payment Proof"}
+                        </button>
+                      )}
+
+                    {/* Payment Verify Toggle - Admin Only */}
+                    {isAdmin && (
+                      <button
+                        onClick={handleUpdatePaymentStatus}
+                        disabled={isUpdatingPayment}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {order.paymentStatus ? (
+                          <XCircle className="w-4 h-4" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4" />
+                        )}
+                        {order.paymentStatus
+                          ? "Unverify Payment"
+                          : "Verify Payment"}
+                      </button>
+                    )}
+
+                    {/* Update Order Status - Admin Only */}
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setNewStatus(order.status);
+                          setShowStatusModal(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-medium transition"
+                      >
+                        <Truck className="w-4 h-4" />
+                        Update Status
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {/* Payment Proof Modal */}
                 {showPaymentProof && (
                   <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden">
-                      <div className="flex items-center justify-between p-4 border-b">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+                      <div className="flex items-center justify-between p-4 border-b shrink-0">
                         <h3 className="text-lg font-bold text-gray-800">
                           {order.paymentMethod === "EMI"
                             ? "PAN Card"
@@ -411,7 +433,7 @@ export default function OrderDetail() {
                           <XCircle className="w-5 h-5 text-gray-500" />
                         </button>
                       </div>
-                      <div className="p-4">
+                      <div className="p-4 overflow-y-auto flex items-center justify-center">
                         <img
                           src={order.paymentImage}
                           alt={
@@ -419,7 +441,7 @@ export default function OrderDetail() {
                               ? "PAN Card"
                               : "Payment Proof"
                           }
-                          className="w-full h-auto rounded-lg"
+                          className="w-full h-auto object-contain rounded-lg"
                         />
                       </div>
                     </div>
