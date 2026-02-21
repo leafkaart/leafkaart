@@ -96,6 +96,7 @@ exports.createProduct = async (req, res) => {
       categoryId,
       subCategoryId,
       dealerPrice,
+      customerPrice: dealerPrice, 
       stock: stock || 0,
       sku,
       brand,
