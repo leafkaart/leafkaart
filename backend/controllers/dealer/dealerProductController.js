@@ -171,6 +171,7 @@ exports.listProducts = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findOne({
