@@ -4,6 +4,18 @@ const { sendEmail } = require("../../utils/emailService");
 const dealerTemplate = require("../../utils/dealerAssignedTemplate");
 const customerTemplate = require("../../utils/customerAssignedTemplate");
 
+const ALLOWED_STATUSES = [
+  "order_placed",
+  "processing",
+  "packed",
+  "ready_for_dispatch",
+  "shipped",
+  "out_for_delivery",
+  "delivered",
+  "cancelled",
+  "returned",
+];
+
 exports.listOrders = async (req, res) => {
   try {
     const { page = 1, limit = 20, status, from, to, q } = req.query;
@@ -21,7 +33,7 @@ exports.listOrders = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate("items.product", "title sku price")
+        .populate("items.product", "title sku price images")
         .populate("user", "name email phone")
         .populate("address", "line1 line2 city state zip")
         .populate("dealerAssign.dealer", "name email")
@@ -43,7 +55,6 @@ exports.getOrder = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -54,7 +65,7 @@ exports.getOrder = async (req, res) => {
     const order = await Order.findById(id)
       .populate("user", "name email phone")
       .populate("address")
-      .populate("items.product", "title slug sku price")
+      .populate("items.product", "title slug sku price images")
       .populate("dealerAssign.dealer", "name email")
       .populate("dealerAssign.assignedBy", "name email");
 
@@ -81,12 +92,19 @@ exports.getOrder = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    const { status } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: "Valid order id required",
+      });
+    }
+
+    if (!status || !ALLOWED_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order status",
       });
     }
 
@@ -98,16 +116,13 @@ exports.updateOrderStatus = async (req, res) => {
       });
     }
 
-    if (status) order.status = status;
+    order.status = status;
 
-    if (notes || status) {
-      order.timeline.push({
-        status: status || order.status,
-        notes: notes || "",
-        changedBy: req.user._id,
-        at: new Date(),
-      });
-    }
+    order.timeline.push({
+      status,
+      changedBy: req.user?._id || null,
+      at: new Date(),
+    });
 
     await order.save();
 
@@ -136,13 +151,19 @@ exports.updateOrderStatus = async (req, res) => {
 exports.updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { isPaid, paymentMethod, paymentImage } = req.body;
+    const { paymentStatus, paymentMethod, paymentImage } = req.body;
 
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: "Valid order id required",
+      });
+    }
+
+    if (typeof paymentStatus !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "paymentStatus must be boolean",
       });
     }
 
@@ -154,27 +175,20 @@ exports.updatePaymentStatus = async (req, res) => {
       });
     }
 
-    // Update payment fields
-    if (typeof isPaid === "boolean") order.isPaid = isPaid;
+    order.paymentStatus = paymentStatus;
+    order.isPaid = paymentStatus;
+
     if (paymentMethod) order.paymentMethod = paymentMethod;
     if (paymentImage) order.paymentImage = paymentImage;
 
-    // Update paymentStatus flag based on isPaid
-    order.paymentStatus = !!isPaid;
-
-    // Add timeline entry
     order.timeline.push({
       status: order.status,
-      notes: `Payment updated: ${isPaid ? "Paid" : "Pending"} via ${
-        paymentMethod || "N/A"
-      }`,
-      changedBy: req.user._id,
+      changedBy: req.user?._id || null,
       at: new Date(),
     });
 
     await order.save();
 
-    // Populate fields for response
     const updatedOrder = await Order.findById(id)
       .populate("user", "name email phone")
       .populate("address")

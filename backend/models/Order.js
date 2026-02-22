@@ -60,7 +60,7 @@ const orderSchema = new Schema(
       type: Boolean,
       default: false,
     },
-
+    isPaid: { type: Boolean, default: false },
     status: {
       type: String,
       enum: [
@@ -85,7 +85,7 @@ const orderSchema = new Schema(
         at: { type: Date, default: Date.now },
       },
     ],
-    isPaid: { type: Boolean, default: false },
+   
     meta: Schema.Types.Mixed,
   },
   { timestamps: true }
