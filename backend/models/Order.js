@@ -53,9 +53,11 @@ const orderSchema = new Schema(
       required: true,
     },
     paymentImage: {
-      type: String, 
+      type: String,
       default: null,
     },
+    aadhaarImage: { type: String, default: null },
+    panImage: { type: String, default: null },
     paymentStatus: {
       type: Boolean,
       default: false,
@@ -85,7 +87,7 @@ const orderSchema = new Schema(
         at: { type: Date, default: Date.now },
       },
     ],
-   
+
     meta: Schema.Types.Mixed,
   },
   { timestamps: true }
