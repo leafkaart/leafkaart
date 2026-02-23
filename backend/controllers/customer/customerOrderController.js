@@ -242,11 +242,20 @@ exports.createOrder = async (req, res) => {
 
 exports.listOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
+    let filter = {};
+
+    if (req.user.role === "dealer") {
+      filter = {
+        "dealerAssign.dealer": req.user._id
+      };
+    }
+
+    const orders = await Order.find(filter)
       .populate("user", "name email mobile")
       .populate("address")
       .populate("items.product", "title sku brand images customerPrice")
       .populate("items.dealer", "name mobile")
+      .populate("dealerAssign.dealer", "name mobile")
       .sort({ createdAt: -1 });
 
     return res.json({
