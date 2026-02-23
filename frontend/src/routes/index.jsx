@@ -337,6 +337,14 @@ const router = createBrowserRouter([
           </SuspenseWrapper>
         ),
       },
+       {
+        path: "orders/:orderId",
+        element: (
+          <SuspenseWrapper>
+            <OrderDetails />
+          </SuspenseWrapper>
+        ),
+      },
     ],
   },
   {

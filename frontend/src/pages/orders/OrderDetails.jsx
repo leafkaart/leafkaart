@@ -41,6 +41,7 @@ export default function OrderDetail() {
   const [newStatus, setNewStatus] = useState("");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "admin";
+  const isEmployee = user?.role === "employee";
 
   // Fetch dealers by pincode
   const {
@@ -366,25 +367,24 @@ export default function OrderDetail() {
                   {/* Divider */}
                   <div className="border-t border-dashed border-gray-200" />
 
-                  {/* Action Buttons Row */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* View Payment Proof - Only for QR and EMI */}
-                    {(order.paymentMethod === "QR" ||
-                      order.paymentMethod === "EMI") &&
-                      order.paymentImage && (
-                        <button
-                          onClick={() => setShowPaymentProof(true)}
-                          className="flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-medium transition"
-                        >
-                          <Package className="w-4 h-4" />
-                          {order.paymentMethod === "EMI"
-                            ? "View PAN Card"
-                            : "View Payment Proof"}
-                        </button>
-                      )}
+                  {(isAdmin || isEmployee) && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {(order.paymentMethod === "QR" ||
+                        order.paymentMethod === "EMI") &&
+                        order.paymentImage && (
+                          <button
+                            onClick={() => setShowPaymentProof(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-medium transition"
+                          >
+                            <Package className="w-4 h-4" />
+                            {order.paymentMethod === "EMI"
+                              ? "View PAN Card"
+                              : "View Payment Proof"}
+                          </button>
+                        )}
 
-                    {/* Payment Verify Toggle - Admin Only */}
-                    {isAdmin && (
+                      {/* Payment Verify Toggle - Admin Only */}
+
                       <button
                         onClick={handleUpdatePaymentStatus}
                         disabled={isUpdatingPayment}
@@ -399,10 +399,9 @@ export default function OrderDetail() {
                           ? "Unverify Payment"
                           : "Verify Payment"}
                       </button>
-                    )}
 
-                    {/* Update Order Status - Admin Only */}
-                    {isAdmin && (
+                      {/* Update Order Status - Admin Only */}
+
                       <button
                         onClick={() => {
                           setNewStatus(order.status);
@@ -413,8 +412,8 @@ export default function OrderDetail() {
                         <Truck className="w-4 h-4" />
                         Update Status
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
                 {/* Payment Proof Modal */}
                 {showPaymentProof && (
@@ -527,7 +526,11 @@ export default function OrderDetail() {
                       className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
                     >
                       <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <Package className="w-8 h-8 text-amber-700 opacity-50" />
+                        <img
+                          src={item.product?.images[0]?.url}
+                          alt={item.title}
+                          className="w-full h-full object-cover rounded-lg"
+                        />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900">
@@ -759,8 +762,10 @@ export default function OrderDetail() {
                   )}
                   <div className="flex justify-between font-bold text-lg text-gray-900 pt-3 border-t">
                     <span>Grand Total</span>
-                    <span>₹{order.grandTotal?.toLocaleString()}</span>
+                    <span>₹{isAdmin ? order.dealerPrice : order.grandTotal?.toLocaleString()}</span>
                   </div>
+
+                  {}
                 </div>
               </div>
             </div>
@@ -849,7 +854,7 @@ export default function OrderDetail() {
                                   )}
                                 </div>
                               </div>
-                              <div className="text-right">
+                              {/* <div className="text-right">
                                 {selectedDealer?._id ===
                                   dealerObj.dealer._id && (
                                   <CheckCircle className="w-6 h-6 text-amber-700 mb-2" />
@@ -868,7 +873,7 @@ export default function OrderDetail() {
                                       </p>
                                     </div>
                                   )}
-                              </div>
+                              </div> */}
                             </div>
 
                             {(() => {
