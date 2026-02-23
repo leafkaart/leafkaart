@@ -22,10 +22,17 @@ exports.listOrders = async (req, res) => {
     const skip = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
 
     const filter = {};
+
+    if (req.user.role === "dealer") {
+      filter["dealerAssign.dealer"] = req.user._id;
+    }
+
     if (status) filter.status = status;
+
     if (from || to) filter.createdAt = {};
     if (from) filter.createdAt.$gte = new Date(from);
     if (to) filter.createdAt.$lte = new Date(to);
+
     if (q) filter.$text = { $search: q };
 
     const [orders, total] = await Promise.all([
@@ -38,12 +45,18 @@ exports.listOrders = async (req, res) => {
         .populate("address", "line1 line2 city state zip")
         .populate("dealerAssign.dealer", "name email")
         .populate("timeline.changedBy", "name email"),
+
       Order.countDocuments(filter),
     ]);
 
     res.json({
       success: true,
-      data: { orders, total, page: Number(page), limit: Number(limit) },
+      data: {
+        orders,
+        total,
+        page: Number(page),
+        limit: Number(limit),
+      },
     });
   } catch (err) {
     console.error("listOrders err", err);

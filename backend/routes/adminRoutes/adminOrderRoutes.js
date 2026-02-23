@@ -3,7 +3,7 @@ const { listOrders, getOrder, updateOrderStatus, updatePaymentStatus, assignOrde
 const auth = require('../../middlewares/authMiddleware');
 const router = express.Router();
 
-router.get('/listOrders', listOrders);
+router.get('/listOrders', auth, listOrders);
 router.get('/getOrder/:id', getOrder);
 router.patch('/updateOrderStatus/:id', updateOrderStatus);
 router.patch('/updatePaymentStatus/:id', updatePaymentStatus);
