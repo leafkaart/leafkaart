@@ -89,6 +89,25 @@ const orderSchema = new Schema(
     ],
 
     meta: Schema.Types.Mixed,
+    returnRequest: {
+      type: {
+        type: String,
+        enum: ["return", "replace"],
+      },
+      status: {
+        type: String,
+        enum: ["none", "requested", "approved", "rejected"],
+        default: "none",
+        index: true,
+      },
+      reason: String,
+      images: [String],
+      serialNumber: String,
+      modelNumber: String,
+      adminMessage: String,
+      requestedAt: Date,
+      updatedAt: Date,
+    },
   },
   { timestamps: true }
 );

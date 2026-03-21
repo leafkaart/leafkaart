@@ -1,11 +1,12 @@
 const Banner = require("../../models/Banner");
+const Category = require('../../models/Category');
 const { uploadImageToCloudinary } = require("../../utils/imageUploader");
 
 exports.createBanner = async (req, res) => {
   try {
-    const { title, link, order, isActive } = req.body;
+    const { title, categoryId, order, isActive } = req.body;
 
-    // 🔹 Validations
+    // 🔹 Title validation
     if (!title || title.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -13,7 +14,23 @@ exports.createBanner = async (req, res) => {
       });
     }
 
-    // 🔹 Image validation (SINGLE IMAGE)
+    // 🔹 Category validation (IMPORTANT)
+    if (!categoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "Category is required",
+      });
+    }
+
+    const categoryExists = await Category.findById(categoryId);
+    if (!categoryExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    // 🔹 Image validation
     if (!req.files || !req.files.images) {
       return res.status(400).json({
         success: false,
@@ -21,9 +38,8 @@ exports.createBanner = async (req, res) => {
       });
     }
 
-    const image = req.files.images; // 👈 single image
+    const image = req.files.images;
 
-    // Optional: size check (5MB)
     if (image.size > 5 * 1024 * 1024) {
       return res.status(400).json({
         success: false,
@@ -31,7 +47,7 @@ exports.createBanner = async (req, res) => {
       });
     }
 
-    // 🔹 Upload to Cloudinary
+    // 🔹 Upload
     const upload = await uploadImageToCloudinary(
       image,
       process.env.FOLDER_NAME || "banners",
@@ -39,21 +55,21 @@ exports.createBanner = async (req, res) => {
       600
     );
 
-    if (!upload || !upload.secure_url) {
+    if (!upload?.secure_url) {
       return res.status(500).json({
         success: false,
         message: "Image upload failed",
       });
     }
 
-    // 🔹 Save to DB
+    // 🔹 Save
     const banner = await Banner.create({
-      images: upload.secure_url,  
-      alt: title || "Banner image",
+      images: upload.secure_url,
+      alt: title,
       title,
-      link,
+      category: categoryId, // ✅ IMPORTANT
       order: order || 0,
-      isActive: isActive !== undefined ? isActive : true,
+      isActive: isActive ?? true,
       createdBy: req.user._id,
     });
 
@@ -74,10 +90,21 @@ exports.createBanner = async (req, res) => {
 
 exports.listBanners = async (req, res) => {
   try {
-    const banners = await Banner.find().sort({ order: 1, createdAt: -1 });
-    res.json({ success: true, count: banners.length, banners });
+    const banners = await Banner.find({ isActive: true })
+      .populate("category", "name images") 
+      .sort({ order: 1, createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: banners.length,
+      banners,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("listBanners error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 

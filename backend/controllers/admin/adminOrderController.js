@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Order = require("../../models/Order");
+const Product = require("../../models/Product");
 const { sendEmail } = require("../../utils/emailService");
 const dealerTemplate = require("../../utils/dealerAssignedTemplate");
 const customerTemplate = require("../../utils/customerAssignedTemplate");
@@ -345,6 +346,109 @@ exports.unassignOrderToDealer = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error",
+    });
+  }
+};
+
+exports.handleReturnRequest = async (req, res) => {
+  try {
+    const { status, message } = req.body;
+    const orderId = req.params.id;
+
+    // ✅ Validate status
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be 'approved' or 'rejected'",
+      });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // ✅ Check if request exists
+    if (
+      !order.returnRequest ||
+      order.returnRequest.status !== "requested"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "No pending return/replace request",
+      });
+    }
+
+    const requestType = order.returnRequest.type; // return / replace
+
+    // ✅ Update request
+    order.returnRequest.status = status;
+    order.returnRequest.adminMessage = message;
+    order.returnRequest.updatedAt = new Date();
+
+    // ✅ APPROVED LOGIC
+    if (status === "approved") {
+
+      // 🔁 RETURN FLOW
+      if (requestType === "return") {
+        order.status = "cancelled";
+
+        // Restore stock
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.product, {
+            $inc: { stock: item.qty },
+          });
+        }
+      }
+
+      // 🔁 REPLACE FLOW
+      if (requestType === "replace") {
+        order.status = "processing";
+
+        // 👉 Optional: Create replacement order (advanced)
+        /*
+        const newOrder = await Order.create({
+          ...copy required fields from old order
+        });
+        */
+      }
+    }
+
+    // ❌ REJECTED LOGIC → no status change
+    if (status === "rejected") {
+      // keep order as it is (usually delivered)
+    }
+
+    // ✅ Timeline update
+    order.timeline.push({
+      status:
+        status === "approved"
+          ? requestType === "return"
+            ? "return_approved"
+            : "replace_approved"
+          : requestType === "return"
+          ? "return_rejected"
+          : "replace_rejected",
+      notes: message,
+      changedBy: req.user._id,
+    });
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: `${requestType} request ${status}`,
+    });
+
+  } catch (err) {
+    console.error("handleReturnRequest error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
     });
   }
 };

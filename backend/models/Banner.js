@@ -5,7 +5,11 @@ const bannerSchema = new Schema({
   images: { type: String, required: true }, 
   alt: { type: String },                       
   title: { type: String },
-  link: { type: String },
+  category: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "Category",
+    required: true 
+  },
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }

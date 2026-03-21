@@ -291,3 +291,105 @@ exports.getOrder = async (req, res) => {
   }
 };
 
+exports.requestReturnOrder = async (req, res) => {
+  try {
+    const { reason, serialNumber, modelNumber, type } = req.body;
+    const orderId = req.params.id;
+
+    if (!type || !["return", "replace"].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Type must be 'return' or 'replace'",
+      });
+    }
+
+    const order = await Order.findById({
+      _id: orderId,
+      user: req.user._id,
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (order.returnRequest?.status === "requested") {
+      return res.status(400).json({
+        success: false,
+        message: "Request already submitted",
+      });
+    }
+
+    if (!req.files || !req.files.images) {
+      return res.status(400).json({
+        success: false,
+        message: "Minimum 2 images required",
+      });
+    }
+
+    let images = Array.isArray(req.files.images)
+      ? req.files.images
+      : [req.files.images];
+
+    if (images.length < 2 || images.length > 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Upload min 2 and max 6 images",
+      });
+    }
+
+    const uploadedImages = [];
+
+    for (const img of images) {
+      const upload = await uploadImageToCloudinary(
+        img,
+        "return-replace",
+        1000,
+        1000
+      );
+
+      if (!upload?.secure_url) {
+        return res.status(500).json({
+          success: false,
+          message: "Image upload failed",
+        });
+      }
+
+      uploadedImages.push(upload.secure_url);
+    }
+
+    order.returnRequest = {
+      type,
+      status: "requested",
+      reason,
+      images: uploadedImages,
+      serialNumber,
+      modelNumber,
+      requestedAt: new Date(),
+    };
+
+    order.timeline.push({
+      status: type === "return" ? "return_requested" : "replace_requested",
+      notes: reason,
+      changedBy: req.user._id,
+    });
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: `${
+        type === "return" ? "Return" : "Replacement"
+      } request submitted successfully`,
+    });
+
+  } catch (err) {
+    console.error("requestReturnOrder error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
