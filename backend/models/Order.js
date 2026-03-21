@@ -92,7 +92,7 @@ const orderSchema = new Schema(
     returnRequest: {
       type: {
         type: String,
-        enum: ["return", "replace"],
+        enum: ["cancel", "return", "replace"],
       },
       status: {
         type: String,
