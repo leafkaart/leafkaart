@@ -7,6 +7,7 @@ import {
   useUnassignOrderToDealerMutation,
   useUpdateOrderStatusMutation,
   useUpdatePaymentStatusMutation,
+  useHandleReturnRequestMutation,
 } from "../../store/api/ordersApi";
 import {
   ChevronLeft,
@@ -29,6 +30,9 @@ export default function OrderDetail() {
   const { orderId } = useParams();
   console.log("Order ID:", orderId);
   const { data: order, isLoading, error, refetch } = useGetOrderQuery(orderId);
+  const [returnAdminMessage, setReturnAdminMessage] = useState("");
+  const [handleReturnRequest, { isLoading: isHandlingReturn }] =
+    useHandleReturnRequestMutation();
   const [unassignDealer, { isLoading: isUnassigning }] =
     useUnassignOrderToDealerMutation();
   const { toasts, addToast, removeToast } = useToast();
@@ -112,6 +116,20 @@ export default function OrderDetail() {
       );
     }
   };
+  const handleReturnApproval = async (status) => {
+    try {
+      await handleReturnRequest({
+        orderId,
+        status,
+        message: returnAdminMessage,
+      }).unwrap();
+      addToast(`Request ${status} successfully!`, "success");
+      setReturnAdminMessage("");
+      refetch();
+    } catch (error) {
+      addToast(error?.data?.message || "Failed to process request.", "error");
+    }
+  };
 
   const getStatusColor = (status) => {
     const colors = {
@@ -124,15 +142,41 @@ export default function OrderDetail() {
       delivered: "bg-green-100 text-green-700",
       cancelled: "bg-red-100 text-red-700",
       returned: "bg-gray-100 text-gray-700",
+      return_approved: "bg-green-100 text-green-700",
+      return_rejected: "bg-red-100 text-red-700",
+      replace_approved: "bg-blue-100 text-blue-700",
+      replace_rejected: "bg-red-100 text-red-700",
+      cancel_approved: "bg-gray-100 text-gray-700",
+      cancel_rejected: "bg-red-100 text-red-700",
     };
     return colors[status] || "bg-gray-100 text-gray-700";
   };
 
   const formatStatus = (status) => {
-    return status
-      ?.split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+    const labels = {
+      order_placed: "Order Placed",
+      processing: "Processing",
+      packed: "Packed",
+      ready_for_dispatch: "Ready for Dispatch",
+      shipped: "Shipped",
+      out_for_delivery: "Out for Delivery",
+      delivered: "Delivered",
+      cancelled: "Cancelled",
+      returned: "Returned",
+      return_approved: "Return Approved",
+      return_rejected: "Return Rejected",
+      replace_approved: "Replace Approved",
+      replace_rejected: "Replace Rejected",
+      cancel_approved: "Cancellation Approved",
+      cancel_rejected: "Cancellation Rejected",
+    };
+    return (
+      labels[status] ||
+      status
+        ?.split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ")
+    );
   };
   const calculateDealerProfit = (products) => {
     if (!products || products.length === 0) return 0;
@@ -362,7 +406,32 @@ export default function OrderDetail() {
                       Payment{" "}
                       {order.paymentStatus ? "Verified" : "Not Verified"}
                     </span>
+                      {/* Return / Replace / Cancel Request Status Badge */}
+                  {order.returnRequest?.type &&
+                    order.returnRequest?.status !== "none" && (
+                      <span
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                          order.returnRequest.status === "approved"
+                            ? "bg-green-100 text-green-700"
+                            : order.returnRequest.status === "rejected"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-orange-100 text-orange-700"
+                        }`}
+                      >
+                        {order.returnRequest.status === "approved" ? (
+                          <CheckCircle className="w-3.5 h-3.5" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5" />
+                        )}
+                        {order.returnRequest.type.charAt(0).toUpperCase() +
+                          order.returnRequest.type.slice(1)}{" "}
+                        {order.returnRequest.status.charAt(0).toUpperCase() +
+                          order.returnRequest.status.slice(1)}
+                      </span>
+                    )}
                   </div>
+
+                
 
                   {/* Divider */}
                   <div className="border-t border-dashed border-gray-200" />
@@ -632,6 +701,186 @@ export default function OrderDetail() {
               )}
 
               {/* Order Timeline */}
+
+              {/* Return / Cancel / Replace Request Panel */}
+              {(isAdmin || isEmployee) &&
+                order.returnRequest?.status === "requested" && (
+                  <div className="bg-white rounded-lg border border-orange-200 p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {order.returnRequest.type === "cancel" &&
+                          "Cancellation Request"}
+                        {order.returnRequest.type === "return" &&
+                          "Return Request"}
+                        {order.returnRequest.type === "replace" &&
+                          "Replacement Request"}
+                      </h2>
+                      <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-full">
+                        Pending Approval
+                      </span>
+                    </div>
+
+                    {/* Request Details */}
+                    <div className="bg-orange-50 rounded-lg p-4 space-y-2 mb-4">
+                      {order.returnRequest.reason && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Reason:</span>{" "}
+                          {order.returnRequest.reason}
+                        </p>
+                      )}
+                      {order.returnRequest.serialNumber && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Serial No:</span>{" "}
+                          {order.returnRequest.serialNumber}
+                        </p>
+                      )}
+                      {order.returnRequest.modelNumber && (
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Model No:</span>{" "}
+                          {order.returnRequest.modelNumber}
+                        </p>
+                      )}
+                      {order.returnRequest.requestedAt && (
+                        <p className="text-xs text-gray-500">
+                          Requested at:{" "}
+                          {new Date(
+                            order.returnRequest.requestedAt
+                          ).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Attached Images */}
+                    {order.returnRequest.images?.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          Attached Images
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {order.returnRequest.images.map((img, i) => (
+                            <a
+                              key={i}
+                              href={img}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <img
+                                src={img}
+                                alt={`proof-${i}`}
+                                className="w-full h-24 object-cover rounded-lg border hover:opacity-80 transition"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Admin Message */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Message to Customer (Optional)
+                      </label>
+                      <textarea
+                        value={returnAdminMessage}
+                        onChange={(e) => setReturnAdminMessage(e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        placeholder="Reason for approval or rejection..."
+                      />
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleReturnApproval("approved")}
+                        disabled={isHandlingReturn}
+                        className="flex items-center gap-2 px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleReturnApproval("rejected")}
+                        disabled={isHandlingReturn}
+                        className="flex items-center gap-2 px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {/* Resolved Return Request — show after approved/rejected */}
+{(isAdmin || isEmployee) &&
+  order.returnRequest?.type &&
+  ["approved", "rejected"].includes(order.returnRequest?.status) && (
+    <div
+      className={`bg-white rounded-lg border p-6 ${
+        order.returnRequest.status === "approved"
+          ? "border-green-200"
+          : "border-red-200"
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        {order.returnRequest.status === "approved" ? (
+          <CheckCircle className="w-5 h-5 text-green-600" />
+        ) : (
+          <XCircle className="w-5 h-5 text-red-600" />
+        )}
+        <h2 className="text-lg font-semibold text-gray-900">
+          {order.returnRequest.type.charAt(0).toUpperCase() +
+            order.returnRequest.type.slice(1)}{" "}
+          Request{" "}
+          <span
+            className={
+              order.returnRequest.status === "approved"
+                ? "text-green-600"
+                : "text-red-600"
+            }
+          >
+            {order.returnRequest.status.charAt(0).toUpperCase() +
+              order.returnRequest.status.slice(1)}
+          </span>
+        </h2>
+      </div>
+
+      {order.returnRequest.reason && (
+        <p className="text-sm text-gray-600 mb-2">
+          <span className="font-medium">Customer Reason:</span>{" "}
+          {order.returnRequest.reason}
+        </p>
+      )}
+
+      {order.returnRequest.adminMessage && (
+        <p className="text-sm text-gray-600 mb-2">
+          <span className="font-medium">Your Message:</span>{" "}
+          {order.returnRequest.adminMessage}
+        </p>
+      )}
+
+      {order.returnRequest.images?.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          {order.returnRequest.images.map((img, i) => (
+            <a key={i} href={img} target="_blank" rel="noreferrer">
+              <img
+                src={img}
+                alt={`proof-${i}`}
+                className="w-full h-24 object-cover rounded-lg border hover:opacity-80 transition"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
+      {order.returnRequest.updatedAt && (
+        <p className="text-xs text-gray-400 mt-3">
+          Resolved at:{" "}
+          {new Date(order.returnRequest.updatedAt).toLocaleString()}
+        </p>
+      )}
+    </div>
+  )}
               {order.timeline && order.timeline.length > 0 && (
                 <div className="bg-white rounded-lg border p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -762,7 +1011,10 @@ export default function OrderDetail() {
                   )}
                   <div className="flex justify-between font-bold text-lg text-gray-900 pt-3 border-t">
                     <span>Grand Total</span>
-                    <span>₹{isAdmin ? order.dealerPrice : order.grandTotal?.toLocaleString()}</span>
+                    <span>
+                      ₹
+                      {order.grandTotal?.toLocaleString()}
+                    </span>
                   </div>
 
                   {}

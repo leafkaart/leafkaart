@@ -27,12 +27,14 @@ import {
   selectFilteredBanners,
   selectBannerFilters,
 } from "../../store/slices/bannerSlice";
+import { useGetCategoriesQuery } from "../../store/api/productsApi";
 
 const BannerManagement = () => {
   const dispatch = useDispatch();
   
   // RTK Query hooks
   const { data: bannersData, isLoading: bannersLoading } = useGetBannersQuery();
+  const { data: categoriesData } = useGetCategoriesQuery();
   const [createBanner] = useCreateBannerMutation();
   const [updateBanner] = useUpdateBannerMutation();
   const [deleteBanner] = useDeleteBannerMutation();
@@ -60,6 +62,7 @@ const BannerManagement = () => {
     order: 0,
     isActive: true,
     images: null,
+     categoryId: "", 
   });
 
   const [bannerErrors, setBannerErrors] = useState({});
@@ -86,6 +89,7 @@ const BannerManagement = () => {
     if (!bannerForm.title?.trim()) errors.title = "Banner title is required";
     if (!isEditMode && !bannerForm.images) errors.images = "Banner images is required";
     if (bannerForm.order < 0) errors.order = "Order must be 0 or greater";
+    
     setBannerErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -127,6 +131,7 @@ const BannerManagement = () => {
       formData.append("link", bannerForm.link || "");
       formData.append("order", bannerForm.order);
       formData.append("isActive", bannerForm.isActive);
+      formData.append("categoryId", bannerForm.categoryId);
       
       if (bannerForm.images) {
         formData.append("images", bannerForm.images);
@@ -161,6 +166,7 @@ const BannerManagement = () => {
       order: banner.order || 0,
       isActive: banner.isActive,
       images: null,
+       categoryId: banner.categoryId?._id || banner.categoryId || "",
     });
     setImagePreview(banner.imageUrl);
     setShowBannerModal(true);
@@ -202,6 +208,7 @@ const BannerManagement = () => {
       order: 0,
       isActive: true,
       images: null,
+      categoryId: "",
     });
     setBannerErrors({});
     setIsEditMode(false);
@@ -380,13 +387,7 @@ const BannerManagement = () => {
                   {banner.title || "Untitled Banner"}
                 </h3>
                 
-                {banner.link && (
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                    <Link className="w-3 h-3" />
-                    <span className="truncate">{banner.link}</span>
-                  </div>
-                )}
-
+             
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                   <button
                     onClick={() => handleEditBanner(banner)}
@@ -509,6 +510,33 @@ const BannerManagement = () => {
               </div>
 
               <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    categoryId *
+  </label>
+  <select
+    name="categoryId"
+    value={bannerForm.categoryId}
+    onChange={handleBannerChange}
+    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+      bannerErrors.categoryId ? "border-red-500" : "border-gray-200"
+    }`}
+  >
+    <option value="">Select a categoryId</option>
+    {(Array.isArray(categoriesData)
+      ? categoriesData
+      : categoriesData?.categories || categoriesData?.data || []
+    ).map((cat) => (
+      <option key={cat._id} value={cat._id}>
+        {cat.name}
+      </option>
+    ))}
+  </select>
+  {bannerErrors.categoryId && (
+    <p className="text-red-500 text-xs mt-1">{bannerErrors.categoryId}</p>
+  )}
+</div>
+{/* 
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Link URL (Optional)
                 </label>
@@ -520,7 +548,7 @@ const BannerManagement = () => {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                   placeholder="e.g., /products/sale"
                 />
-              </div>
+              </div> */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

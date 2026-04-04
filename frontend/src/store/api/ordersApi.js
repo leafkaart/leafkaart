@@ -77,6 +77,14 @@ export const ordersApi = createApi({
       }),
       invalidatesTags: ["Orders"],
     }),
+
+    handleReturnRequest: builder.mutation({
+      query: ({ orderId, status, message }) => ({
+        url: `/admin/orders/return-action/${orderId}`,
+        method: "POST",
+        body: { status, message },
+      }),
+    }),
   }),
 });
 
@@ -89,4 +97,5 @@ export const {
   useUnassignOrderToDealerMutation,
   useUpdateOrderStatusMutation,
   useUpdatePaymentStatusMutation,
+  useHandleReturnRequestMutation
 } = ordersApi;

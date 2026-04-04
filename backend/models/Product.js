@@ -8,6 +8,8 @@ const productSchema = new Schema({
   shortDescription: { type: String },
   sku: { type: String },
   brand: { type: String },
+  serialNumber: {type: String},
+  modelNumber:{type:String},
   dealerId: { type: Schema.Types.ObjectId, ref: 'User' },
   employeeId: { type: Schema.Types.ObjectId, ref: 'User' },
   images: [{ url: String, alt: String, order: Number }],
