@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { Calendar } from "lucide-react";
 
 const DateRangeFilter = ({
@@ -7,14 +9,29 @@ const DateRangeFilter = ({
   selectedGroupBy,
   selectedDateRange,
 }) => {
-  const [fromDate, setFromDate] = useState(selectedDateRange.from || "");
-  const [toDate, setToDate] = useState(selectedDateRange.to || "");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  useEffect(() => {
+    setFromDate(selectedDateRange?.from || "");
+    setToDate(selectedDateRange?.to || "");
+  }, [selectedDateRange]);
 
   const handleApplyFilter = () => {
+    if (!fromDate || !toDate) return;
+
+    if (new Date(fromDate) > new Date(toDate)) {
+      alert("From date cannot be greater than To date");
+      return;
+    }
+
     onDateRangeChange(fromDate, toDate);
   };
 
-  const handleQuickFilter = (days) => {
+  const handleQuickFilter = (value) => {
+    if (!value) return;
+
+    const days = Number(value);
     const to = new Date();
     const from = new Date();
     from.setDate(from.getDate() - days);
@@ -35,74 +52,80 @@ const DateRangeFilter = ({
 
   return (
     <div className="bg-gray-50 rounded-lg p-4 mb-6">
-      <div className="flex flex-col lg:flex-row gap-4">
-        {/* Quick Filters */}
-        <div className="flex flex-wrap gap-2">
-          <span className="text-sm font-medium text-gray-700 self-center mr-2">
-            Quick Filter:
-          </span>
-          <button
-            onClick={() => handleQuickFilter(7)}
-            className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+        {/* Quick Filter Dropdown */}
+        <div className="w-full sm:w-auto">
+          <label className="text-xs font-medium text-gray-600 mb-1 block">
+            Quick Filter
+          </label>
+          <select
+            onChange={(e) => handleQuickFilter(e.target.value)}
+            className="w-full sm:w-[160px] px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
           >
-            Last 7 Days
-          </button>
-          <button
-            onClick={() => handleQuickFilter(30)}
-            className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            Last 30 Days
-          </button>
-          <button
-            onClick={() => handleQuickFilter(90)}
-            className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            Last 90 Days
-          </button>
+            <option value="">Select</option>
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+          </select>
         </div>
 
-        {/* Custom Date Range */}
-        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="From"
-            />
-            <span className="text-gray-500">to</span>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="To"
-            />
+        {/* Date Range */}
+        <div className="w-full">
+          <label className="text-xs font-medium text-gray-600 mb-1 block">
+            Date Range
+          </label>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
+              <Calendar className="w-4 h-4 text-gray-500" />
+
+              <input
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+
+              <span className="text-gray-500 text-sm">to</span>
+
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={handleApplyFilter}
+                disabled={!fromDate || !toDate}
+                className="w-full sm:w-auto px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                Apply
+              </button>
+
+              <button
+                onClick={handleClearFilter}
+                className="w-full sm:w-auto px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100"
+              >
+                Clear
+              </button>
+            </div>
           </div>
-
-          <button
-            onClick={handleApplyFilter}
-            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Apply
-          </button>
-          <button
-            onClick={handleClearFilter}
-            className="px-4 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            Clear
-          </button>
         </div>
 
-        {/* Group By Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">Group By:</span>
+        {/* Group By Dropdown */}
+        <div className="w-full sm:w-auto">
+          <label className="text-xs font-medium text-gray-600 mb-1 block">
+            Group By
+          </label>
           <select
             value={selectedGroupBy}
             onChange={(e) => onGroupByChange(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full sm:w-[140px] px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
           >
             <option value="day">Daily</option>
             <option value="month">Monthly</option>

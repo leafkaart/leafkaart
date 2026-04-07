@@ -1,83 +1,187 @@
-const mongoose = require('mongoose');
-const Order = require('../../models/Order');
-const Product = require('../../models/Product');
+const mongoose = require("mongoose");
+const Order = require("../../models/Order");
+const Product = require("../../models/Product");
+const Dealer = require("../../models/Dealer");
 
-exports.overview = async (req, res) => {
+exports.completeDashboard = async (req, res) => {
   try {
-    const [ordersCount, totalRevenueResult, productsCount, dealersCount] = await Promise.all([
+    const { from, to, groupBy = "day" } = req.query;
+
+    const now = new Date();
+
+    // ✅ Date Filters
+    let matchFilter = {};
+    if (from && to) {
+      matchFilter.createdAt = {
+        $gte: new Date(from),
+        $lte: new Date(to),
+      };
+    }
+
+    // ✅ Default fallback (last 7 days)
+    if (!from || !to) {
+      const last7Days = new Date();
+      last7Days.setDate(last7Days.getDate() - 7);
+
+      matchFilter.createdAt = { $gte: last7Days };
+    }
+
+    // ✅ Month calculations (for growth)
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const [
+      totalOrders,
+      totalProducts,
+      totalDealers,
+      totalRevenueAgg,
+
+      currentMonthOrders,
+      lastMonthOrders,
+
+      currentMonthRevenueAgg,
+      lastMonthRevenueAgg,
+    ] = await Promise.all([
       Order.countDocuments(),
-      Order.aggregate([
-        { $match: { status: { $in: ['delivered', 'completed'] } } },
-        { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
-      ]),
+
       Product.countDocuments(),
-      require('../models/Dealer').countDocuments()
+
+      Dealer.countDocuments(),
+
+      Order.aggregate([
+        { $match: { status: { $in: ["delivered", "completed"] } } },
+        { $group: { _id: null, revenue: { $sum: "$totalAmount" } } },
+      ]),
+
+      // ✅ current month orders
+      Order.countDocuments({
+        createdAt: { $gte: startOfThisMonth },
+      }),
+
+      // ✅ last month orders
+      Order.countDocuments({
+        createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
+      }),
+
+      // ✅ current month revenue
+      Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: startOfThisMonth },
+            status: { $in: ["delivered", "completed"] },
+          },
+        },
+        { $group: { _id: null, revenue: { $sum: "$totalAmount" } } },
+      ]),
+
+      // ✅ last month revenue
+      Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
+            status: { $in: ["delivered", "completed"] },
+          },
+        },
+        { $group: { _id: null, revenue: { $sum: "$totalAmount" } } },
+      ]),
     ]);
 
-    const revenue = (totalRevenueResult[0] && totalRevenueResult[0].revenue) || 0;
+    const totalRevenue = totalRevenueAgg[0]?.revenue || 0;
+    const currentMonthRevenue = currentMonthRevenueAgg[0]?.revenue || 0;
+    const lastMonthRevenue = lastMonthRevenueAgg[0]?.revenue || 0;
 
-    res.json({
-      success: true,
-      data: { ordersCount, revenue, productsCount, dealersCount }
-    });
-  } catch (err) {
-    console.error('overview err', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-};
+    // ✅ Correct Growth Calculation
+    const calcGrowth = (current, prev) =>
+      prev === 0 ? 0 : Number((((current - prev) / prev) * 100).toFixed(2));
 
-exports.salesReport = async (req, res) => {
-  try {
-    const { from, to, groupBy = 'day' } = req.query;
-    const match = {};
-    if (from || to) match.createdAt = {};
-    if (from) match.createdAt.$gte = new Date(from);
-    if (to) match.createdAt.$lte = new Date(to);
+    const ordersGrowth = calcGrowth(currentMonthOrders, lastMonthOrders);
+    const revenueGrowth = calcGrowth(
+      currentMonthRevenue,
+      lastMonthRevenue
+    );
 
-    const dateFormat = groupBy === 'month' ? { $dateToString: { format: "%Y-%m", date: "$createdAt" } }
-      : { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } };
+    // ✅ Dynamic GroupBy (day/month)
+    const dateFormat =
+      groupBy === "month" ? "%Y-%m" : "%Y-%m-%d";
 
-    const agg = [
-      { $match: match },
-      { $group: { _id: dateFormat, totalSales: { $sum: 1 }, revenue: { $sum: '$totalAmount' } } },
-      { $sort: { _id: 1 } }
-    ];
-
-    const rows = await Order.aggregate(agg);
-
-    res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error('salesReport err', err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-};
-
-exports.productReport = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'Invalid id' });
-
-    // Count how many times product appears in orders
-    const rows = await Order.aggregate([
-      { $unwind: '$items' },
-      { $match: { 'items.product': mongoose.Types.ObjectId(id) } },
+    const salesChart = await Order.aggregate([
+      { $match: matchFilter },
       {
         $group: {
-          _id: '$items.product',
-          soldQty: { $sum: '$items.quantity' },
-          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } }
-        }
-      }
+          _id: {
+            $dateToString: {
+              format: dateFormat,
+              date: "$createdAt",
+            },
+          },
+          orders: { $sum: 1 },
+          revenue: { $sum: "$totalAmount" },
+        },
+      },
+      { $sort: { "_id": 1 } },
     ]);
 
-    const product = await Product.findById(id).select('title sku price');
+    const recentOrders = await Order.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("orderId totalAmount status createdAt");
+
+    const topProducts = await Order.aggregate([
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.product",
+          soldQty: { $sum: "$items.quantity" },
+        },
+      },
+      { $sort: { soldQty: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+      {
+        $project: {
+          name: "$product.title",
+          soldQty: 1,
+        },
+      },
+    ]);
+
+    const lowStockProducts = await Product.find({
+      stock: { $lte: 5 },
+    })
+      .limit(5)
+      .select("title stock");
 
     res.json({
       success: true,
-      data: { product, report: rows[0] || { soldQty: 0, totalRevenue: 0 } }
+      data: {
+        overview: {
+          totalOrders,
+          totalRevenue,
+          totalProducts,
+          totalDealers,
+          ordersGrowth,
+          revenueGrowth,
+        },
+        salesChart,
+        recentOrders,
+        topProducts,
+        lowStockProducts,
+      },
     });
   } catch (err) {
-    console.error('productReport err', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("dashboard err", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
