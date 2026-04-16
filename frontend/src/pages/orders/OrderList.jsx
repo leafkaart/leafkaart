@@ -87,7 +87,7 @@ function OrderList() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto px-6 py-2">
+      <main className="px-6 py-2">
         {/* Title Bar with Search and Filter */}
         <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
           <h2 className="text-2xl font-bold text-gray-800">Order List</h2>

@@ -108,7 +108,7 @@ function ProductList() {
     <>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       <div className="h-screen bg-gray-50 flex flex-col">
-        <main className="max-w-7xl px-6 py-2 flex-1 flex flex-col overflow-hidden">
+        <main className=" px-6 py-2 flex-1 flex flex-col overflow-hidden">
           {/* Title Bar with Search, Filter, Add Product */}
           <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
             <h2 className="text-2xl font-bold text-gray-800">Product List</h2>

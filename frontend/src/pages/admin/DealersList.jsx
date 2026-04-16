@@ -263,7 +263,7 @@ const DealersList = () => {
           }}
         />
       )}
-      <div className="py-4 px-6 bg-gray-50 min-h-screen max-w-7xl">
+      <div className="py-4 px-6 bg-gray-50 min-h-screen">
         {/* Toast Notification */}
         {showToast && (
           <div className="fixed top-6 right-6 z-50 animate-slide-in">
