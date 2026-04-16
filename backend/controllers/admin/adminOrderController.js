@@ -395,7 +395,7 @@ exports.handleReturnRequest = async (req, res) => {
 
       // 🔁 RETURN FLOW
       if (requestType === "return") {
-        order.status = "cancelled";
+        order.status = "Returned";
 
         // Restore stock
         for (const item of order.items) {

@@ -83,8 +83,8 @@ exports.login = async (req, res) => {
     }
 
     // if (!user.isVerified) {
-    //   return res.status(403).json({ 
-    //     message: "Account not verified." 
+    //   return res.status(403).json({
+    //     message: "Account not verified."
     //   });
     // }
 
@@ -97,10 +97,7 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
+      process.env.JWT_SECRET
     );
 
     res.status(200).json({
@@ -188,7 +185,7 @@ exports.updateUserDetails = async (req, res) => {
 
     res.status(200).json({
       message: "User updated successfully",
-      user: updatedUser
+      user: updatedUser,
     });
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
