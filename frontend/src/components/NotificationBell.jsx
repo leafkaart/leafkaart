@@ -1,17 +1,48 @@
 import React, { useState } from "react";
 import { Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../hooks/useNotifications";
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
   const { notifications, unreadCount, markNotificationAsRead } = useNotifications();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const role = user?.role?.toLowerCase() || "admin";
+
+  const getNotificationRoute = (notification) => {
+    const roleBasePath = `/${role}`;
+
+    if (notification.type === "order") {
+      return notification.orderId
+        ? `${roleBasePath}/orders/${notification.orderId}`
+        : `${roleBasePath}/orders`;
+    }
+
+    if (notification.type === "product") {
+      return notification.productId
+        ? `${roleBasePath}/products/${notification.productId}`
+        : `${roleBasePath}/products`;
+    }
+
+    if (notification.type === "dealer") {
+      if (role === "admin" || role === "employee") {
+        return `${roleBasePath}/dealers`;
+      }
+
+      return "/dealer/dashboard";
+    }
+
+    return `${roleBasePath}/products`;
+  };
 
   const handleNotificationClick = (notification) => {
     if (!notification.isRead) {
       markNotificationAsRead(notification._id);
     }
-    // Navigate to relevant page based on notification type
-    // navigate to order/dealer/product based on notification.type
+
+    setIsOpen(false);
+    navigate(getNotificationRoute(notification));
   };
 
   return (

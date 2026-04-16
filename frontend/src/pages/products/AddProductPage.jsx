@@ -17,6 +17,8 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
     shortDescription: "",
     sku: "",
     brand: "",
+    serialNumber: "",
+    modelNumber: "",
     dealerPrice: "",
     stock: "",
   });
@@ -43,6 +45,7 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   };
+  
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -52,6 +55,8 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
       // Reset subcategory when category changes
       ...(name === "categoryId" ? { subCategoryId: "" } : {}),
     }));
+
+    console.log(`Input changed: ${name} = ${value}`);
 
     // Clear subcategory when category changes
     if (name === "categoryId") {
@@ -101,6 +106,10 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
 
       if (formData.sku) formDataToSend.append("sku", formData.sku);
       if (formData.brand) formDataToSend.append("brand", formData.brand);
+      if (formData.serialNumber)
+        formDataToSend.append("serialNumber", formData.serialNumber);
+      if (formData.modelNumber)
+        formDataToSend.append("modelNumber", formData.modelNumber);
       if (formData.shortDescription)
         formDataToSend.append("shortDescription", formData.shortDescription);
 
@@ -116,10 +125,13 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
       });
 
       // API call
+      console.log("Sending formDataToSend:", formDataToSend);
       const result = await createProduct(formDataToSend).unwrap();
+
 
       if (result.success) {
         toast.success("Product added successfully", { autoClose: 1200 });
+        console.log("Product created:", result);
 
         // Clean up image previews
         images.forEach((img) => URL.revokeObjectURL(img.preview));
@@ -253,7 +265,7 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
                 </div>
               </div>
 
-              {/* Brand & SKU */}
+              {/* Brand, SKU, Serial Number, and Model Number */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -279,6 +291,34 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
                     value={formData.sku}
                     onChange={handleInputChange}
                     placeholder="e.g., EL-TV-001"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Serial Number
+                  </label>
+                  <input
+                    type="text"
+                    name="serialNumber"
+                    value={formData.serialNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter serial number"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Model Number
+                  </label>
+                  <input
+                    type="text"
+                    name="modelNumber"
+                    value={formData.modelNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter model number"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   />
                 </div>

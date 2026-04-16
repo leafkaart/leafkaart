@@ -25,6 +25,8 @@ export default function ProductDetail() {
     shortDescription: "",
     sku: "",
     brand: "",
+    serialNumber: "",
+    modelNumber: "",
     dealerPrice: "",
     stock: "",
     categoryId: "",
@@ -57,6 +59,8 @@ export default function ProductDetail() {
         shortDescription: product.shortDescription || "",
         sku: product.sku || "",
         brand: product.brand || "",
+        serialNumber: product.serialNumber || "",
+        modelNumber: product.modelNumber || "",
         dealerPrice: product.dealerPrice || "",
         stock: product.stock || "",
         categoryId: product.categoryId || "",
@@ -198,6 +202,8 @@ export default function ProductDetail() {
                           shortDescription: product.shortDescription || "",
                           sku: product.sku || "",
                           brand: product.brand || "",
+                          serialNumber: product.serialNumber || "",
+                          modelNumber: product.modelNumber || "",
                           dealerPrice: product.dealerPrice || "",
                           stock: product.stock || "",
                           categoryId: product.categoryId?._id || "",
@@ -471,6 +477,42 @@ export default function ProductDetail() {
                       />
                     ) : (
                       <p className="font-medium text-gray-900">{product.sku}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Serial Number</p>
+                    {isEditMode ? (
+                      <input
+                        type="text"
+                        value={formData.serialNumber}
+                        onChange={(e) =>
+                          handleInputChange("serialNumber", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <p className="font-medium text-gray-900">
+                        {product.serialNumber || "N/A"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Model Number</p>
+                    {isEditMode ? (
+                      <input
+                        type="text"
+                        value={formData.modelNumber}
+                        onChange={(e) =>
+                          handleInputChange("modelNumber", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <p className="font-medium text-gray-900">
+                        {product.modelNumber || "N/A"}
+                      </p>
                     )}
                   </div>
 

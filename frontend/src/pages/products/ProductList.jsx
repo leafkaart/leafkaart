@@ -15,7 +15,6 @@ import {
   Package,
   Plus,
   Search,
-  X,
   CheckCircle,
   XCircle,
   Eye,
@@ -29,25 +28,12 @@ function ProductList() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
-  const [showModal, setShowModal] = useState(false);
   const { toasts, addToast, removeToast } = useToast();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role;
   const isDealer = user?.role === "dealer";
   const navigate = useNavigate();
   // New product form state
-  const [newProduct, setNewProduct] = useState({
-    categoryId: "",
-    subCategoryId: "",
-    dealerId: "",
-    title: "",
-    shortDescription: "",
-    sku: "",
-    dealerPrice: "",
-    stock: "",
-    images: [],
-  });
-
   const [showAddForm, setShowAddForm] = useState(false);
 
   // RTK Query hooks
@@ -61,15 +47,6 @@ function ProductList() {
       skip: !selectedCategory,
     });
   const subCategories = subCategoriesResponse || [];
-
-  // Subcategories for modal dropdown
-  const {
-    data: modalSubCategoriesResponse,
-    isLoading: modalSubCategoriesLoading,
-  } = useGetSubCategoriesByCategoryQuery(newProduct.categoryId, {
-    skip: !newProduct.categoryId,
-  });
-  const modalSubCategories = modalSubCategoriesResponse ?? [];
 
   const { data: dealersResponse, isLoading: dealersLoading } =
     useGetDealersQuery();
@@ -85,7 +62,6 @@ function ProductList() {
     search,
   });
 
-  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
   const [approveProduct, { isLoading: isApproving }] =
     useApproveProductMutation();
   const [rejectProduct, { isLoading: isRejecting }] =
@@ -96,66 +72,6 @@ function ProductList() {
     setSelectedSubCategory("");
   };
 
-  const handleModalCategoryChange = (categoryId) => {
-    console.log("Selected Category ID in Modal:", categoryId);
-
-    setNewProduct({
-      ...newProduct,
-      categoryId,
-      subCategoryId: "", // Reset subcategory
-    });
-  };
-
-  const handleAddProduct = async () => {
-    let dealerId = newProduct.dealerId;
-
-    if (user.role === "dealer") {
-      dealerId = user._id;
-      newProduct.dealerId = user._id;
-    }
-
-    console.log(dealerId, "dealerId");
-
-    console.log(newProduct, "asdfasd");
-    // Validation
-    if (
-      !newProduct.title ||
-      !newProduct.dealerPrice ||
-      !newProduct.categoryId ||
-      !newProduct.subCategoryId ||
-      !newProduct.dealerId
-    ) {
-      addToast("Please fill all required fields", "error");
-      return;
-    }
-
-    try {
-      await createProduct({
-        ...newProduct,
-        dealerPrice: Number(newProduct.dealerPrice),
-        stock: Number(newProduct.stock) || 0,
-      }).unwrap();
-
-      // Reset form
-      setNewProduct({
-        categoryId: "",
-        subCategoryId: "",
-        dealerId: "",
-        title: "",
-        shortDescription: "",
-        sku: "",
-        dealerPrice: "",
-        stock: "",
-      });
-      setShowModal(false);
-      addToast("Product added successfully!", "success");
-    } catch (error) {
-      console.error("Failed to add product:", error);
-      addToast("Failed to add product. Please try again.", "error");
-    }
-  };
-
-  console.log("formdata sdfasd", newProduct);
   const handleApprove = async (productId) => {
     try {
       await approveProduct(productId).unwrap();
@@ -471,215 +387,6 @@ function ProductList() {
           </div>
         </main>
 
-        {/* Add Product Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b">
-                <h3 className="text-lg font-bold text-gray-800">
-                  Add New Product
-                </h3>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="p-1 hover:bg-gray-100 rounded-lg transition"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-              <div className="p-5 space-y-4">
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category *
-                  </label>
-                  <select
-                    value={newProduct.categoryId}
-                    onChange={(e) => handleModalCategoryChange(e.target.value)}
-                    disabled={categoriesLoading}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">Select Category</option>
-                    {categories?.map((cat) => (
-                      <option key={cat._id} value={cat._id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Subcategory */}
-                {newProduct.categoryId && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Subcategory *
-                    </label>
-                    <select
-                      value={newProduct.subCategoryId}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          subCategoryId: e.target.value,
-                        })
-                      }
-                      disabled={modalSubCategoriesLoading}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="">Select Subcategory</option>
-                      {modalSubCategories?.length === 0 &&
-                      !modalSubCategoriesLoading ? (
-                        <option disabled>No subcategories available</option>
-                      ) : (
-                        modalSubCategories?.map((sub) => (
-                          <option
-                            key={sub._id || sub.id}
-                            value={sub._id || sub.id}
-                          >
-                            {sub.name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    {modalSubCategoriesLoading && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Loading subcategories...
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Dealer */}
-                {!isDealer && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Dealer *
-                    </label>
-                    <select
-                      value={newProduct.dealerId}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          dealerId: e.target.value,
-                        })
-                      }
-                      disabled={dealersLoading}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="">Select Dealer</option>
-                      {dealers?.map((dealer) => (
-                        <option
-                          key={dealer._id || dealer.id}
-                          value={dealer._id || dealer.id}
-                        >
-                          {dealer.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {/* Product Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={newProduct.title}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, title: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    placeholder="Enter product name"
-                  />
-                </div>
-
-                {/* Short Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Short Description
-                  </label>
-                  <textarea
-                    value={newProduct.shortDescription}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        shortDescription: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    placeholder="Brief description"
-                    rows="2"
-                  />
-                </div>
-
-                {/* SKU */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    SKU
-                  </label>
-                  <input
-                    type="text"
-                    value={newProduct.sku}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, sku: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    placeholder="EL-TV-001"
-                  />
-                </div>
-
-                {/* Price and Stock */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Price (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      value={newProduct.dealerPrice}
-                      onChange={(e) =>
-                        setNewProduct({
-                          ...newProduct,
-                          dealerPrice: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Stock *
-                    </label>
-                    <input
-                      type="number"
-                      value={newProduct.stock}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, stock: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-3 p-5 border-t bg-gray-50">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddProduct}
-                  disabled={isCreating}
-                  className="px-4 py-2 text-sm font-medium bg-amber-700 hover:bg-amber-800 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isCreating ? "Adding..." : "Add Product"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );

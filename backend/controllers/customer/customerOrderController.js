@@ -4,6 +4,10 @@ const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
 const Address = require("../../models/Address");
 const { uploadImageToCloudinary } = require("../../utils/imageUploader");
+const {
+  getUserIdsByRoles,
+  createAndSendNotifications,
+} = require("../../utils/notificationHelper");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -224,6 +228,18 @@ exports.createOrder = async (req, res) => {
       { user: req.user._id },
       { $set: { items: [], totalAmount: 0 } }
     );
+
+    const dealerIds = [
+      ...new Set(items.map((item) => item.dealer?.toString()).filter(Boolean)),
+    ];
+    const adminAndEmployeeIds = await getUserIdsByRoles(["admin", "employee"]);
+
+    await createAndSendNotifications({
+      userIds: [...dealerIds, ...adminAndEmployeeIds],
+      orderId: order._id,
+      message: `New order placed: ${order.orderNumber}`,
+      type: "order",
+    });
 
     return res.json({
       success: true,

@@ -2,11 +2,16 @@ const Product = require("../../models/Product");
 const Category = require("../../models/Category");
 const SubCategory = require("../../models/SubCategory");
 const { uploadImageToCloudinary } = require("../../utils/imageUploader");
-const { getIO } = require("../../socket");
-const Notification = require("../../models/Notification");
+const {
+  getUserIdsByRoles,
+  createAndSendNotifications,
+} = require("../../utils/notificationHelper");
 
 exports.createProduct = async (req, res) => {
   try {
+
+        console.log("Received createProduct request with body:", req.body);
+
     const {
       title,
       categoryId,
@@ -16,6 +21,9 @@ exports.createProduct = async (req, res) => {
       sku,
       brand,
       shortDescription,
+      serialNumber,
+      modelNumber,
+      
     } = req.body;
 
     if (!title || title.trim() === "")
@@ -101,24 +109,20 @@ exports.createProduct = async (req, res) => {
       sku,
       brand,
       shortDescription,
+      serialNumber,
+      modelNumber,
       images: uploadedImages,
       dealerId: req.user._id,
     };
 
     const product = await Product.create(payload);
 
-    const notification = await Notification.create({
+    const adminAndEmployeeIds = await getUserIdsByRoles(["admin", "employee"]);
+    await createAndSendNotifications({
+      userIds: adminAndEmployeeIds,
       productId: product._id,
       message: `New Product Added: ${title}`,
       type: "product",
-      isRead: false,
-    });
-
-    const io = getIO();
-    io.emit("receive-notification", {
-      message: notification.message,
-      type: "product",
-      createdAt: notification.createdAt,
     });
 
     res.status(201).json({
@@ -193,7 +197,17 @@ exports.getProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
-    const updates = req.body;
+    const updates = { ...req.body };
+
+    if (typeof updates.serialNumber === "string") {
+      updates.serialNumber = updates.serialNumber.trim();
+    }
+
+    if (typeof (updates.modelNumber || updates.modalNumber) === "string") {
+      updates.modelNumber = (updates.modelNumber || updates.modalNumber).trim();
+    }
+
+    delete updates.modalNumber;
 
     // Restricted fields
     delete updates.isApproved;
@@ -272,8 +286,6 @@ exports.deleteProduct = async (req, res) => {
         .json({ success: false, message: "Product not found" });
 
     // ---------------- Real-time Socket Event ----------------
-    io.emit("product:deleted", { id: req.params.id });
-
     res.status(200).json({
       success: true,
       message: "Product deleted successfully",
@@ -305,8 +317,6 @@ exports.updateStock = async (req, res) => {
         .json({ success: false, message: "Product not found" });
 
     // ---------------- Real-time Socket Event ----------------
-    io.emit("product:stockUpdated", product);
-
     res.status(200).json({
       success: true,
       message: "Stock updated",

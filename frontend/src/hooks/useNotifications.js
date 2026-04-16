@@ -44,8 +44,8 @@ export const useNotifications = () => {
     socketService.on("receive-notification", handleNewNotification);
 
     // Load initial notifications
-    if (data?.notifications) {
-      dispatch(setNotifications(data.notifications));
+    if (data?.notifications || Array.isArray(data)) {
+      dispatch(setNotifications(data.notifications || data));
     }
 
     // Cleanup

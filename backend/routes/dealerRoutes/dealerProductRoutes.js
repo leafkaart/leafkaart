@@ -14,9 +14,9 @@ const router = express.Router();
 
 router.post('/createProduct', auth, dealerMiddleware, createProduct);
 router.get('/listProducts', auth, listProducts);
-router.get('/getProduct', getProduct);
+router.get('/getProduct/:id', auth, dealerMiddleware, getProduct);
 router.patch('/updateProduct/:id', auth, updateProduct);
-router.delete('/deleteProduct/:id', deleteProduct);
-router.patch('/update-stock/:id', updateStock);
+router.delete('/deleteProduct/:id', auth, dealerMiddleware, deleteProduct);
+router.patch('/update-stock/:id', auth, dealerMiddleware, updateStock);
 
 module.exports = router;

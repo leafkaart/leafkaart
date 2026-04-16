@@ -9,7 +9,7 @@ import DashboardAnalytics from "../../components/dashboard/DashboardAnalytics.js
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
-  const userId = useSelector((state) => state.auth.user?.id); 
+  const userId = useSelector((state) => state.auth.user?._id); 
   
   // Fetch initial notifications
   const { data: notificationsData, isLoading } = useGetNotificationsQuery();
@@ -48,8 +48,8 @@ const AdminDashboard = () => {
 
   // Load initial notifications
   useEffect(() => {
-    if (notificationsData) {
-      dispatch(setNotifications(notificationsData));
+    if (notificationsData?.notifications || Array.isArray(notificationsData)) {
+      dispatch(setNotifications(notificationsData.notifications || notificationsData));
     }
   }, [notificationsData, dispatch]);
 

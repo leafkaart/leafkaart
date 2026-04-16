@@ -1,7 +1,9 @@
 const User = require("../../models/User");
 const bcrypt = require("bcryptjs");
-const Notification = require("../../models/Notification");
-const { getIO } = require("../../socket");
+const {
+  getUserIdsByRoles,
+  createAndSendNotifications,
+} = require("../../utils/notificationHelper");
 
 exports.dealerRegister = async (req, res) => {
   try {
@@ -53,17 +55,11 @@ exports.dealerRegister = async (req, res) => {
       status: "pending",
     });
 
-    const notification = await Notification.create({
+    const adminAndEmployeeIds = await getUserIdsByRoles(["admin", "employee"]);
+    await createAndSendNotifications({
+      userIds: adminAndEmployeeIds,
       message: `New Dealer Registered: ${user.name}`,
       type: "dealer",
-      isRead: false,
-    });
-
-    const io = getIO();
-    io.emit("receive-notification", {
-      message: notification.message,
-      type: "dealer",
-      createdAt: notification.createdAt,
     });
 
     return res.status(201).json({
