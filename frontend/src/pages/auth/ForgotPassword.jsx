@@ -24,7 +24,7 @@ const ForgotPassword = () => {
     setErrors({});
     setSuccess(true);
 
-    console.log("Password reset link sent to:", email);
+    // console.log("Password reset link sent to:", email);
   };
 
   return (

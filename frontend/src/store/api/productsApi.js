@@ -31,7 +31,7 @@ const productsApi = createApi({
       transformResponse: (response) => {
         const data = response.data || response;
 
-        console.log("SubCategories Response:", response);
+     //   console.log("SubCategories Response:", response);
         // Transform categoryId from object to string
         return Array.isArray(data)
           ? data.map((sub) => ({

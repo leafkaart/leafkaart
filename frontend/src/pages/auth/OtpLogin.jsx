@@ -58,7 +58,7 @@ const OtpLogin = () => {
     setStep(2);
     setCounter(30);
     setCanResend(false);
-    console.log("OTP sent to:", phone);
+    // console.log("OTP sent to:", phone);
   };
 
   const handleVerifyOtp = async () => {
@@ -86,7 +86,7 @@ const OtpLogin = () => {
     setOtp(["", "", "", "", "", ""]);
     setCounter(30);
     setCanResend(false);
-    console.log("OTP resent to:", phone);
+    // console.log("OTP resent to:", phone);
   };
 
   return (

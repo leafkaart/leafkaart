@@ -36,7 +36,7 @@ const ResetPassword = () => {
 
     if (!validateForm()) return;
 
-    console.log("Password Reset Successfully:", form.password);
+    // console.log("Password Reset Successfully:", form.password);
     setSuccess(true);
   };
 

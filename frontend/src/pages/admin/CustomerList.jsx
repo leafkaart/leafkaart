@@ -114,7 +114,7 @@ const CustomersList = () => {
 
       const data = await res.json();
 
-      console.log(data, "customers response");
+      // console.log(data, "customers response");
       if (!res.ok) {
         alert(data.message || "Failed to fetch customers");
         return;

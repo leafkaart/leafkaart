@@ -28,7 +28,7 @@ import { useToast } from "../../hooks/useToast"; // Adjust path as needed
 
 export default function OrderDetail() {
   const { orderId } = useParams();
-  console.log("Order ID:", orderId);
+  //console.log("Order ID:", orderId);
   const { data: order, isLoading, error, refetch } = useGetOrderQuery(orderId);
   const [returnAdminMessage, setReturnAdminMessage] = useState("");
   const [handleReturnRequest, { isLoading: isHandlingReturn }] =

@@ -56,7 +56,7 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
       ...(name === "categoryId" ? { subCategoryId: "" } : {}),
     }));
 
-    console.log(`Input changed: ${name} = ${value}`);
+   // console.log(`Input changed: ${name} = ${value}`);
 
     // Clear subcategory when category changes
     if (name === "categoryId") {
@@ -64,12 +64,12 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
     }
   };
 
-  console.log("subcategories:", subcategories);
+  //console.log("subcategories:", subcategories);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log("Submitting formData:", formData);
+    //console.log("Submitting formData:", formData);
     // Validation
     if (
       !formData.title ||
@@ -125,13 +125,13 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
       });
 
       // API call
-      console.log("Sending formDataToSend:", formDataToSend);
+     // console.log("Sending formDataToSend:", formDataToSend);
       const result = await createProduct(formDataToSend).unwrap();
 
 
       if (result.success) {
         toast.success("Product added successfully", { autoClose: 1200 });
-        console.log("Product created:", result);
+      //  console.log("Product created:", result);
 
         // Clean up image previews
         images.forEach((img) => URL.revokeObjectURL(img.preview));

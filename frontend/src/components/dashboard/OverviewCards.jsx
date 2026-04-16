@@ -3,7 +3,7 @@ import { ShoppingCart, DollarSign, Package, Users } from "lucide-react";
 
 const OverviewCards = ({ data, loading }) => {
   const overview = data || {};
-  console.log(overview, "overviewoverviewoverview")
+  // console.log(overview, "overviewoverviewoverview")
   const formatCurrency = (value) => {
     return `₹${Number(value || 0).toLocaleString("en-IN")}`;
   };

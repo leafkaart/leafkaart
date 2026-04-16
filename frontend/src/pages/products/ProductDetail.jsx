@@ -69,7 +69,7 @@ export default function ProductDetail() {
     }
   }, [product]);
 
-  console.log("Product Data:", product);
+  //console.log("Product Data:", product);
 
   const handleUpdateProduct = async () => {
     setIsSaving(true);

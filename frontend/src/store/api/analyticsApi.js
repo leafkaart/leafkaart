@@ -7,7 +7,7 @@ export const analyticsApi = createApi({
     baseUrl: "http://localhost:1200/api/admin",
     prepareHeaders: (headers, { getState }) => {
       const token = getState()?.auth?.token;
-      console.log("TOKEN:", token);
+     // console.log("TOKEN:", token);
       return headers;
     },
   }),

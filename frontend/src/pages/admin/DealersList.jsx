@@ -238,7 +238,7 @@ const DealersList = () => {
 
       const data = await res.json();
 
-      console.log(data, "resresres");
+      // console.log(data, "resresres");
       if (!res.ok) {
         alert(data.message || "Failed to fetch dealers");
         return;

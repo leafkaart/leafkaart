@@ -58,7 +58,7 @@ function ImageUploadSection({ images, setImages, maxImages = 6 }) {
     });
   };
 
-  console.log("Current Images:", images);
+// console.log("Current Images:", images);
 
   return (
     <div className="space-y-4">

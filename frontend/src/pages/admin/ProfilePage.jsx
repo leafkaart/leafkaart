@@ -137,7 +137,7 @@ const ProfilePage = () => {
       // TODO: Replace with actual API call
       // await dispatch(updateProfile(profileData)).unwrap();
       
-      console.log("Saving profile:", profileData);
+      // console.log("Saving profile:", profileData);
       
       setSuccessMessage("Profile updated successfully!");
       setIsEditing(false);
@@ -155,7 +155,7 @@ const ProfilePage = () => {
       // TODO: Replace with actual API call
       // await dispatch(changePassword(passwordData)).unwrap();
       
-      console.log("Changing password");
+      // console.log("Changing password");
       
       setSuccessMessage("Password changed successfully!");
       setIsChangingPassword(false);

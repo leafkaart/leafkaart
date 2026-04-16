@@ -250,7 +250,7 @@ const CategoryManagement = () => {
 
   // Delete Category
   const handleDeleteCategory = async (id) => {
-    console.log("Delete Category ID:", id);
+    // console.log("Delete Category ID:", id);
     setDeleteTarget(id);
     setDeleteType("category");
     setShowDeleteModal(true);
@@ -258,7 +258,7 @@ const CategoryManagement = () => {
 
   // Delete Subcategory
   const handleDeleteSubcategory = async (id) => {
-    console.log("Delete Subcategory ID:", id);
+   // console.log("Delete Subcategory ID:", id);
     setDeleteTarget(id);
     setDeleteType("subcategory");
     setShowDeleteModal(true);
