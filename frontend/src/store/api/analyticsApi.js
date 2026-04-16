@@ -2,47 +2,36 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const analyticsApi = createApi({
   reducerPath: "analyticsApi",
+
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_BACKEND_URL || "http://localhost:1200/api/admin/dashboard",
+    baseUrl: "http://localhost:1200/api/admin",
     prepareHeaders: (headers, { getState }) => {
-      const token = getState().auth.token;
-      if (token) headers.set("authorization", `Bearer ${token}`);
+      const token = getState()?.auth?.token;
+      console.log("TOKEN:", token);
       return headers;
     },
   }),
-  tagTypes: ["Analytics", "SalesReport", "ProductReport"],
+
+  tagTypes: ["Dashboard"],
 
   endpoints: (builder) => ({
-    // Get dashboard overview
-    getOverview: builder.query({
-      query: () => "/api/admin/dashboard/overview",
-      providesTags: ["Analytics"],
-    }),
-
-    // Get sales report with filters
-    getSalesReport: builder.query({
-      query: ({ from, to, groupBy = "day" } = {}) => {
+    getDashboard: builder.query({
+      query: ({ from, to, groupBy } = {}) => {
         const params = new URLSearchParams();
+      
         if (from) params.append("from", from);
         if (to) params.append("to", to);
-        params.append("groupBy", groupBy);
-        return `/api/admin/dashboard/salesReport?${params.toString()}`;
+        if (groupBy) params.append("groupBy", groupBy);
+      
+        return {
+          url: "/dashboard/completeDashboard",
+          params,
+        };
       },
-      providesTags: ["SalesReport"],
-    }),
 
-    // Get product report
-    getProductReport: builder.query({
-      query: (productId) => `/api/admin/dashboard/productReport/${productId}`,
-      providesTags: (result, error, productId) => [
-        { type: "ProductReport", id: productId },
-      ],
+      providesTags: ["Dashboard"],
     }),
   }),
 });
 
-export const {
-  useGetOverviewQuery,
-  useGetSalesReportQuery,
-  useGetProductReportQuery,
-} = analyticsApi;
+export const { useGetDashboardQuery } = analyticsApi;
