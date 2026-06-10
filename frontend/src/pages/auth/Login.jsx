@@ -62,6 +62,7 @@ const handleSubmit = async (e) => {
     
     // Get user role for navigation
     const userRole = res.data.user.role?.toLowerCase();
+    console.log("User Role:", res.data.user);
     
     // Show success toast
     addToast(`Welcome back! Login successful as ${userRole}`, "success");
@@ -85,7 +86,28 @@ const handleSubmit = async (e) => {
     
   } catch (error) {
     console.error("Login error:", error);
-    const message = error?.response?.data?.message || error.message || "Login failed. Please try again.";
+    const status = error?.response?.status;
+    console.log("Error Status:", error?.response);
+    const responseData = error?.response?.data || {};
+    const message =
+      responseData.message || error.message || "Login failed. Please try again.";
+
+  
+
+    if (
+      status === 403 &&
+      (responseData.isActive === false ||
+        /pending admin approval/i.test(responseData.message || ""))
+    ) {
+      addToast(
+        "Your account is pending approval. Please wait until admin verifies your details.",
+        "info"
+      );
+      setTimeout(() => {
+        navigate("/waiting-for-approval");
+      }, 1000);
+      return;
+    }
     
     // Show error toast
     addToast(message, "error");

@@ -73,7 +73,7 @@ const router = createBrowserRouter([
     path: "/register",
     element: (
       <SuspenseWrapper>
-        <Register />
+        <DealerRegistrationForm />
       </SuspenseWrapper>
     ),
   },

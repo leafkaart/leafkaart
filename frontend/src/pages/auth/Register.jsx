@@ -12,6 +12,8 @@ import {
   CreditCard,
   AlertCircle,
   MapPin,
+  Image,
+  X,
 } from "lucide-react";
 import onlylogo from '../../assets/onlylogo.png';
 import logo from '../../assets/logo.png';
@@ -39,6 +41,8 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dealerPhotos, setDealerPhotos] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
   const navigate = useNavigate();
   const validateForm = () => {
     const newErrors = {};
@@ -64,6 +68,10 @@ const Register = () => {
     if (!formData.pinCode) newErrors.pinCode = "Pin code is required";
     else if (!/^\d{6}$/.test(formData.pinCode))
       newErrors.pinCode = "Pin code must be 6 digits";
+    if (dealerPhotos.length < 3)
+      newErrors.dealerPhotos = "Please upload at least 3 dealer photos";
+    else if (dealerPhotos.length > 5)
+      newErrors.dealerPhotos = "You can upload up to 5 dealer photos";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -71,6 +79,46 @@ const Register = () => {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
+  };
+
+  const handlePhotoChange = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    const invalidFiles = selectedFiles.filter(
+      (file) => !file.type.startsWith("image/")
+    );
+    if (invalidFiles.length > 0) {
+      setErrors((prev) => ({
+        ...prev,
+        dealerPhotos: "Only image files are allowed",
+      }));
+      return;
+    }
+
+    const nextFiles = [...dealerPhotos, ...selectedFiles].slice(0, 5);
+    const nextPreviews = nextFiles.map((file) => URL.createObjectURL(file));
+
+    photoPreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    setDealerPhotos(nextFiles);
+    setPhotoPreviews(nextPreviews);
+
+    if (errors.dealerPhotos) {
+      setErrors({ ...errors, dealerPhotos: "" });
+    }
+
+    e.target.value = "";
+  };
+
+  const removePhoto = (index) => {
+    const nextFiles = dealerPhotos.filter((_, fileIndex) => fileIndex !== index);
+    const nextPreviews = photoPreviews.filter(
+      (_, previewIndex) => previewIndex !== index
+    );
+
+    URL.revokeObjectURL(photoPreviews[index]);
+    setDealerPhotos(nextFiles);
+    setPhotoPreviews(nextPreviews);
   };
 
   
@@ -85,26 +133,25 @@ const Register = () => {
 
     setIsSubmitting(true);
 
-    const payload = {
-      name: formData.name,
-      email: formData.email,
-      password: formData.password,
-      mobile: formData.mobile,
-      storeName: formData.storeName,
-      storeGstin: formData.storeGstin,
-      panCard: formData.panCard,
-      storeAddress: formData.storeAddress,
-      pinCode: formData.pinCode,
-      role: "dealer",
-    };
+    const payload = new FormData();
+    payload.append("name", formData.name);
+    payload.append("email", formData.email);
+    payload.append("password", formData.password);
+    payload.append("mobile", formData.mobile);
+    payload.append("storeName", formData.storeName);
+    payload.append("storeGstin", formData.storeGstin);
+    payload.append("panCard", formData.panCard);
+    payload.append("storeAddress", formData.storeAddress);
+    payload.append("pinCode", formData.pinCode);
+    payload.append("role", "dealer");
+    dealerPhotos.forEach((photo) => payload.append("dealerPhotos", photo));
 
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/auth/dealer-register`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: payload,
         }
       );
 
@@ -131,6 +178,9 @@ const Register = () => {
         pinCode: "",
       });
       setErrors({});
+      photoPreviews.forEach((preview) => URL.revokeObjectURL(preview));
+      setDealerPhotos([]);
+      setPhotoPreviews([]);
 
       setToastType("success");
       setToastMessage(
@@ -520,7 +570,64 @@ const Register = () => {
                       />
                     </div>
                     {errors.pinCode && (
-                      <p className="text-red-500 text-xs mt-1">{errors.pinCode}</p>
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.pinCode}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Dealer Photos *
+                    </label>
+                    <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-amber-300 bg-amber-50 rounded-lg px-4 py-5 cursor-pointer hover:bg-amber-100 transition">
+                      <Image className="w-5 h-5 text-amber-700" />
+                      <span className="text-sm font-medium text-gray-700">
+                        Upload 3 to 5 dealer photos
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        The admin will review these before approval
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handlePhotoChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {dealerPhotos.length}/5 selected
+                    </p>
+                    {errors.dealerPhotos && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.dealerPhotos}
+                      </p>
+                    )}
+
+                    {photoPreviews.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        {photoPreviews.map((preview, index) => (
+                          <div
+                            key={`${preview}-${index}`}
+                            className="relative rounded-lg overflow-hidden border border-gray-200"
+                          >
+                            <img
+                              src={preview}
+                              alt={`Dealer preview ${index + 1}`}
+                              className="h-20 w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(index)}
+                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
+                              aria-label={`Remove photo ${index + 1}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>

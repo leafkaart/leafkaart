@@ -1,5 +1,5 @@
 import React from "react";
-import { X, User, Mail, Phone, Store, MapPin, FileText, CreditCard, Shield, CheckCircle, XCircle, Clock } from "lucide-react";
+import { X, User, Mail, Phone, Store, MapPin, FileText, CreditCard, Shield, CheckCircle, XCircle, Clock, Image } from "lucide-react";
 
 const DealerModal = ({ dealer, onClose }) => {
   const getStatusBadge = (status) => {
@@ -12,7 +12,7 @@ const DealerModal = ({ dealer, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white z-10">
@@ -74,6 +74,35 @@ const DealerModal = ({ dealer, onClose }) => {
               <MapPin className="w-4 h-4 text-amber-600" /> Store Address
             </h3>
             <p className="text-sm text-gray-600 leading-relaxed">{dealer.storeAddress}</p>
+          </div>
+
+          {/* Dealer Photos */}
+          <div className="border rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <Image className="w-4 h-4 text-amber-600" /> Dealer Photos
+            </h3>
+            {Array.isArray(dealer.dealerPhotos) && dealer.dealerPhotos.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {dealer.dealerPhotos.map((photo, index) => (
+                  <a
+                    key={`${photo}-${index}`}
+                    href={photo}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+                    title={`Open photo ${index + 1}`}
+                  >
+                    <img
+                      src={photo}
+                      alt={`Dealer photo ${index + 1}`}
+                      className="h-40 w-full object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No dealer photos uploaded.</p>
+            )}
           </div>
 
           {/* Meta */}

@@ -13,6 +13,7 @@ import {
   Info,
   ToggleLeft,
   ToggleRight,
+  Image,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DealerModal from "../../components/dealer/DealerModal";
@@ -27,6 +28,8 @@ const DealersList = () => {
   const [loadingDealerId, setLoadingDealerId] = useState(null);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [showDealerModal, setShowDealerModal] = useState(false);
+  const [dealerPhotos, setDealerPhotos] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -90,6 +93,11 @@ const DealersList = () => {
     else if (!/^\d{6}$/.test(formData.pinCode))
       newErrors.pinCode = "Pin code must be 6 digits";
 
+    if (dealerPhotos.length < 3)
+      newErrors.dealerPhotos = "Please upload at least 3 dealer photos";
+    else if (dealerPhotos.length > 5)
+      newErrors.dealerPhotos = "You can upload up to 5 dealer photos";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -107,29 +115,68 @@ const DealersList = () => {
     setErrors({ ...errors, [name]: "" });
   };
 
+  const handlePhotoChange = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    const invalidFiles = selectedFiles.filter(
+      (file) => !file.type.startsWith("image/")
+    );
+    if (invalidFiles.length > 0) {
+      setErrors((prev) => ({
+        ...prev,
+        dealerPhotos: "Only image files are allowed",
+      }));
+      return;
+    }
+
+    const nextFiles = [...dealerPhotos, ...selectedFiles].slice(0, 5);
+    const nextPreviews = nextFiles.map((file) => URL.createObjectURL(file));
+
+    photoPreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    setDealerPhotos(nextFiles);
+    setPhotoPreviews(nextPreviews);
+
+    if (errors.dealerPhotos) {
+      setErrors({ ...errors, dealerPhotos: "" });
+    }
+
+    e.target.value = "";
+  };
+
+  const removePhoto = (index) => {
+    const nextFiles = dealerPhotos.filter((_, fileIndex) => fileIndex !== index);
+    const nextPreviews = photoPreviews.filter(
+      (_, previewIndex) => previewIndex !== index
+    );
+
+    URL.revokeObjectURL(photoPreviews[index]);
+    setDealerPhotos(nextFiles);
+    setPhotoPreviews(nextPreviews);
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    const payload = {
-      name: formData.name,
-      email: formData.email,
-      password: formData.password,
-      mobile: formData.mobile,
-      storeName: formData.storeName,
-      storeGstin: formData.storeGstin,
-      panCard: formData.panCard,
-      storeAddress: formData.storeAddress,
-      pinCode: formData.pinCode,
-      role: formData.role,
-    };
+    const payload = new FormData();
+    payload.append("name", formData.name);
+    payload.append("email", formData.email);
+    payload.append("password", formData.password);
+    payload.append("mobile", formData.mobile);
+    payload.append("storeName", formData.storeName);
+    payload.append("storeGstin", formData.storeGstin);
+    payload.append("panCard", formData.panCard);
+    payload.append("storeAddress", formData.storeAddress);
+    payload.append("pinCode", formData.pinCode);
+    payload.append("role", formData.role);
+    dealerPhotos.forEach((photo) => payload.append("dealerPhotos", photo));
 
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/auth/dealer-register`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: payload,
         }
       );
 
@@ -155,15 +202,22 @@ const DealersList = () => {
 
   const toggleAccountStatus = async (dealer) => {
     setLoadingDealerId(dealer._id);
+    const nextIsActive = !dealer.isActive;
+    const nextStatus = nextIsActive ? "approved" : "rejected";
 
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/auth/updateDealer/${dealer._id}`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
           body: JSON.stringify({
-            isActive: !dealer.isActive,
+            isActive: nextIsActive,
+            isVerified: nextIsActive,
+            status: nextStatus,
           }),
         }
       );
@@ -178,14 +232,21 @@ const DealersList = () => {
       // Update local state
       setDealers(
         dealers.map((d) =>
-          d._id === dealer._id ? { ...d, isActive: !dealer.isActive } : d
+          d._id === dealer._id
+            ? {
+                ...d,
+                isActive: nextIsActive,
+                isVerified: nextIsActive,
+                status: nextStatus,
+              }
+            : d
         )
       );
 
       setToastMessage(
-        dealer.isActive
-          ? "Account deactivated successfully!"
-          : "Account activated successfully!"
+        nextIsActive
+          ? "Dealer approved successfully!"
+          : "Dealer rejected successfully!"
       );
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2000);
@@ -222,6 +283,9 @@ const DealersList = () => {
       pinCode: "",
       role: "dealer",
     });
+    photoPreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    setDealerPhotos([]);
+    setPhotoPreviews([]);
     setErrors({});
   };
 
@@ -734,14 +798,69 @@ const DealersList = () => {
                         }`}
                         placeholder="Enter complete store address"
                       />
-                      {errors.storeAddress && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.storeAddress}
-                        </p>
-                      )}
-                    </div>
+                    {errors.storeAddress && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.storeAddress}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Dealer Photos *
+                    </label>
+                    <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-amber-300 bg-amber-50 rounded-lg px-4 py-5 cursor-pointer hover:bg-amber-100 transition">
+                      <Image className="w-5 h-5 text-amber-700" />
+                      <span className="text-sm font-medium text-gray-700">
+                        Upload 3 to 5 dealer photos
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        The admin will review these before approval
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handlePhotoChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {dealerPhotos.length}/5 selected
+                    </p>
+                    {errors.dealerPhotos && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.dealerPhotos}
+                      </p>
+                    )}
+
+                    {photoPreviews.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        {photoPreviews.map((preview, index) => (
+                          <div
+                            key={`${preview}-${index}`}
+                            className="relative rounded-lg overflow-hidden border border-gray-200"
+                          >
+                            <img
+                              src={preview}
+                              alt={`Dealer preview ${index + 1}`}
+                              className="h-20 w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(index)}
+                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
+                              aria-label={`Remove photo ${index + 1}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
+              </div>
               </div>
 
               {/* Modal Footer */}

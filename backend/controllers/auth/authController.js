@@ -82,6 +82,14 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: "User not found" });
     }
 
+    if (user.role === "dealer" && user.status === "pending") {
+      return res.status(403).json({
+        message:
+          "Your dealer account is pending admin approval. Please wait until we verify your details.",
+        status: "pending",
+      });
+    }
+
     // if (!user.isVerified) {
     //   return res.status(403).json({ 
     //     message: "Account not verified." 

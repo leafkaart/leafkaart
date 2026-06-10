@@ -1,5 +1,6 @@
 const User = require("../../models/User");
 const bcrypt = require("bcryptjs");
+const { uploadImageToCloudinary } = require("../../utils/imageUploader");
 const {
   getUserIdsByRoles,
   createAndSendNotifications,
@@ -18,6 +19,12 @@ exports.dealerRegister = async (req, res) => {
       storeAddress,
       pinCode,
     } = req.body;
+    const dealerPhotosInput = req.files?.dealerPhotos;
+    const dealerPhotos = Array.isArray(dealerPhotosInput)
+      ? dealerPhotosInput
+      : dealerPhotosInput
+        ? [dealerPhotosInput]
+        : [];
 
     if (
       !name ||
@@ -33,12 +40,36 @@ exports.dealerRegister = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    if (dealerPhotos.length < 3 || dealerPhotos.length > 5) {
+      return res.status(400).json({
+        message: "Please upload between 3 and 5 dealer photos",
+      });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: "Email already registered" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const uploadedPhotos = [];
+
+    for (const file of dealerPhotos) {
+      const upload = await uploadImageToCloudinary(
+        file,
+        "dealer-photos",
+        1200,
+        80
+      );
+
+      if (!upload?.secure_url) {
+        return res
+          .status(500)
+          .json({ message: "Failed to upload dealer photo(s)" });
+      }
+
+      uploadedPhotos.push(upload.secure_url);
+    }
 
     const user = await User.create({
       name,
@@ -51,6 +82,7 @@ exports.dealerRegister = async (req, res) => {
       panCard,
       storeAddress,
       pinCode,
+      dealerPhotos: uploadedPhotos,
       isVerified: false,
       status: "pending",
     });
@@ -107,10 +139,29 @@ exports.updateDealer = async (req, res) => {
       return res.status(404).json({ message: "Dealer not found" });
     }
 
-    dealer.status = status || dealer.status;
+    const nextStatus = status || dealer.status;
+
+    dealer.status = nextStatus;
     dealer.isVerified =
-      isVerified !== undefined ? isVerified : dealer.isVerified;
-    dealer.isActive = isActive !== undefined ? isActive : dealer.isActive;
+      isVerified !== undefined
+        ? isVerified
+        : nextStatus === "approved"
+          ? true
+          : dealer.isVerified;
+    dealer.isActive =
+      isActive !== undefined
+        ? isActive
+        : nextStatus === "approved"
+          ? true
+          : dealer.isActive;
+
+    if (nextStatus === "approved") {
+      dealer.approvedBy = req.user?._id || dealer.approvedBy;
+      dealer.approvedAt = new Date();
+    } else if (nextStatus === "rejected") {
+      dealer.isVerified = false;
+      dealer.isActive = false;
+    }
 
     await dealer.save();
 

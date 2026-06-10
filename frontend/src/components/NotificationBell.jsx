@@ -13,10 +13,12 @@ const NotificationBell = () => {
   const getNotificationRoute = (notification) => {
     const roleBasePath = `/${role}`;
 
+    if (notification.orderId) {
+      return `${roleBasePath}/orders/${notification.orderId}`;
+    }
+
     if (notification.type === "order") {
-      return notification.orderId
-        ? `${roleBasePath}/orders/${notification.orderId}`
-        : `${roleBasePath}/orders`;
+      return `${roleBasePath}/orders`;
     }
 
     if (notification.type === "product") {

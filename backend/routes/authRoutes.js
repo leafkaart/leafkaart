@@ -5,6 +5,7 @@ const { employeeRegister, getAllEmployees, updateEmployee, deleteEmployee } = re
 const { customerRegister, getAllCustomers, updateCustomer, deleteCustomer } = require('../controllers/auth/customerRegister');
 
 const auth = require('../middlewares/authMiddleware');
+const { adminMiddleware } = require('../middlewares/roleMiddleware');
 
 const router = express.Router();
 
@@ -19,8 +20,8 @@ router.patch('/updateUserDetails', auth, updateUserDetails);
 
 router.post('/dealer-register', dealerRegister);
 router.get("/getAllDealers", getAllDealers);
-router.patch("/updateDealer/:id", updateDealer);
-router.delete("/deleteDealer/:id", deleteDealer);
+router.patch("/updateDealer/:id", auth, adminMiddleware, updateDealer);
+router.delete("/deleteDealer/:id", auth, adminMiddleware, deleteDealer);
 
 router.post('/employee-register', employeeRegister);
 router.get("/getAllEmployees", getAllEmployees);
