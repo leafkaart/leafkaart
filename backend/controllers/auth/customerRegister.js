@@ -31,8 +31,9 @@ exports.sendOtp = async (req, res) => {
       .services(VERIFY_SERVICE_SID)
       .verifications.create({ to: formattedMobile, channel: "sms" });
 
-    const existingUser = await User.findOne({ mobile, role:"customer" });
+    const existingUser = await User.findOne({ mobile, role: "customer" });
     const isNewUser = !existingUser;
+
     return res.status(200).json({
       message: "OTP sent successfully",
       isNewUser,
