@@ -94,6 +94,9 @@ exports.verifyAndRegister = async (req, res) => {
       { expiresIn: "30d" }
     );
 
+    user.activeTokens.push({ token });
+    await user.save();
+
     return res.status(201).json({
       message: "Customer registered and verified successfully",
       token,
@@ -170,6 +173,9 @@ exports.verifyAndLogin = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
+
+    user.activeTokens.push({ token });
+    await user.save();
 
     return res.status(200).json({
       message: "Login successful",
