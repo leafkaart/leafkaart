@@ -73,7 +73,12 @@ const productsApi = createApi({
         };
       },
       providesTags: ["Products"],
-      transformResponse: (response) => response.data,
+      transformResponse: (response) =>
+        (response.data || []).slice().sort((a, b) => {
+          const aTime = new Date(a?.createdAt || 0).getTime();
+          const bTime = new Date(b?.createdAt || 0).getTime();
+          return bTime - aTime;
+        }),
     }),
 
     getProductById: builder.query({

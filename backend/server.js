@@ -81,6 +81,7 @@ const employeeOrderRoutes = require("./routes/employeeRoutes/employeeOrderRoutes
 // DEALER ROUTES
 const dealerProductRoutes = require("./routes/dealerRoutes/dealerProductRoutes");
 const dealerOrderRoutes = require("./routes/dealerRoutes/dealerOrderRoutes");
+const dealerDashboardRoutes = require("./routes/dealerRoutes/dealerDashboardRoutes");
 
 // CUSTOMER ROUTES
 const productRoutes = require("./routes/customerRoutes/productRoutes");
@@ -110,6 +111,7 @@ app.use("/api/employee/orders", employeeOrderRoutes);
 
 app.use("/api/dealer/products", dealerProductRoutes);
 app.use("/api/dealer/orders", dealerOrderRoutes);
+app.use("/api/dealer/dashboard", dealerDashboardRoutes);
 
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);

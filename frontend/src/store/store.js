@@ -6,6 +6,7 @@ import { bannersApi } from "./api/bannersApi";
 import { notificationApi } from "./api/notificationApi";
 import { ordersApi } from "./api/ordersApi";
 import { analyticsApi } from "./api/analyticsApi";
+import { dealerDashboardApi } from "./api/dealerDashboardApi";
 
 import authReducer from "./slices/authSlice";
 import productReducer from "./slices/productSlice";
@@ -29,6 +30,7 @@ export const store = configureStore({
     [notificationApi.reducerPath]: notificationApi.reducer,
     [ordersApi.reducerPath]: ordersApi.reducer,
     [analyticsApi.reducerPath]: analyticsApi.reducer,
+    [dealerDashboardApi.reducerPath]: dealerDashboardApi.reducer,
   },
   middleware: (getDefault) =>
     getDefault().concat(
@@ -37,7 +39,8 @@ export const store = configureStore({
       bannersApi.middleware,
       notificationApi.middleware,
       ordersApi.middleware,
-      analyticsApi.middleware
+      analyticsApi.middleware,
+      dealerDashboardApi.middleware
     ),
 });
 

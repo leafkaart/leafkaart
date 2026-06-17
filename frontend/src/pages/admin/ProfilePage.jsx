@@ -1,10 +1,9 @@
-import React, { useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import {
   User,
   Mail,
   Phone,
-  MapPin,
   Building2,
   Edit2,
   Save,
@@ -13,11 +12,11 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Image,
 } from "lucide-react";
 
 const ProfilePage = () => {
   const { user } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -31,11 +30,7 @@ const ProfilePage = () => {
   const [profileData, setProfileData] = useState({
     name: user?.name || "",
     email: user?.email || "",
-    phone: user?.phone || "",
-    address: user?.address || "",
-    city: user?.city || "",
-    state: user?.state || "",
-    pincode: user?.pincode || "",
+    mobile: user?.mobile || "",
   });
 
   // Password form state
@@ -45,10 +40,23 @@ const ProfilePage = () => {
     confirmPassword: "",
   });
 
+  useEffect(() => {
+    setProfileData({
+      name: user?.name || "",
+      email: user?.email || "",
+      mobile: user?.mobile || "",
+    });
+  }, [user]);
+
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
 
-  const userRole = user?.role?.toLowerCase() || "dealer";
+  const userRole = user?.role?.toLowerCase() || "admin";
+  const supportedRoles = ["admin", "employee", "dealer"];
+  const isSupportedRole = supportedRoles.includes(userRole);
+  const displayRole = isSupportedRole ? userRole : "admin";
+  const profilePhoto = user?.profilePic || "";
+  const dealerPhotos = Array.isArray(user?.dealerPhotos) ? user.dealerPhotos : [];
 
   const getRoleDisplayText = (role) => {
     const roleMap = {
@@ -57,6 +65,29 @@ const ProfilePage = () => {
       dealer: "Dealer",
     };
     return roleMap[role] || role;
+  };
+
+  const formatDate = (value) => {
+    if (!value) return "N/A";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "N/A";
+
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const displayValue = (value) => {
+    if (value === undefined || value === null || value === "") return "N/A";
+    if (typeof value === "object") {
+      return value.name || value.email || value._id || "N/A";
+    }
+    return value;
   };
 
   const handleInputChange = (e) => {
@@ -97,12 +128,10 @@ const ProfilePage = () => {
       newErrors.email = "Email is invalid";
     }
 
-    if (profileData.phone && !/^\d{10}$/.test(profileData.phone.replace(/\D/g, ""))) {
-      newErrors.phone = "Phone number must be 10 digits";
-    }
-
-    if (profileData.pincode && !/^\d{6}$/.test(profileData.pincode)) {
-      newErrors.pincode = "Pincode must be 6 digits";
+    if (!profileData.mobile.trim()) {
+      newErrors.mobile = "Mobile number is required";
+    } else if (!/^\d{10}$/.test(profileData.mobile.replace(/\D/g, ""))) {
+      newErrors.mobile = "Mobile number must be 10 digits";
     }
 
     setErrors(newErrors);
@@ -146,6 +175,16 @@ const ProfilePage = () => {
     } catch (error) {
       setErrors({ submit: error.message || "Failed to update profile" });
     }
+  };
+
+  const handleCancelProfile = () => {
+    setIsEditing(false);
+    setProfileData({
+      name: user?.name || "",
+      email: user?.email || "",
+      mobile: user?.mobile || "",
+    });
+    setErrors({});
   };
 
   const handleChangePassword = async () => {
@@ -211,8 +250,16 @@ const ProfilePage = () => {
             <div className="flex flex-col md:flex-row items-center gap-6">
               {/* Avatar */}
               <div className="relative">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white flex items-center justify-center shadow-lg">
-                  <User className="w-12 h-12 md:w-16 md:h-16 text-amber-600" />
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden">
+                  {profilePhoto ? (
+                    <img
+                      src={profilePhoto}
+                      alt={`${user?.name || "User"} profile`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-12 h-12 md:w-16 md:h-16 text-amber-600" />
+                  )}
                 </div>
                 <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors">
                   <Camera className="w-4 h-4 text-gray-600" />
@@ -232,219 +279,236 @@ const ProfilePage = () => {
                   </span>
                 </div>
               </div>
-
-              {/* Edit Button */}
-              {!isEditing && !isChangingPassword && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="px-6 py-2.5 bg-white text-amber-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-lg"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  Edit Profile
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Profile Details */}
-          <div className="p-6 md:p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name *
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
+          <div className="p-6 md:p-8 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-gray-50 rounded-2xl border border-gray-200 p-5 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Basic Information
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Only fields stored in the user record are shown here.
+                    </p>
+                  </div>
+
+                  {!isEditing && !isChangingPassword && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="px-4 py-2 bg-white text-amber-700 border border-amber-200 rounded-lg font-medium hover:bg-amber-50 transition-colors flex items-center gap-2 shadow-sm"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Edit Profile
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                  <ProfileField
+                    label="Full Name"
+                    icon={<User className="w-5 h-5 text-gray-400" />}
                     name="name"
                     value={profileData.name}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors ${
-                      isEditing
-                        ? "bg-white border-gray-300"
-                        : "bg-gray-50 border-gray-200 cursor-not-allowed"
-                    } ${errors.name ? "border-red-500" : ""}`}
+                    error={errors.name}
                     placeholder="Enter your full name"
                   />
-                </div>
-                {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address *
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="email"
+                  <ProfileField
+                    label="Email Address"
+                    icon={<Mail className="w-5 h-5 text-gray-400" />}
                     name="email"
                     value={profileData.email}
                     onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors ${
-                      isEditing
-                        ? "bg-white border-gray-300"
-                        : "bg-gray-50 border-gray-200 cursor-not-allowed"
-                    } ${errors.email ? "border-red-500" : ""}`}
+                    disabled
+                    readOnly
+                    error={errors.email}
                     placeholder="Enter your email"
                   />
-                </div>
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                )}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={profileData.phone}
+                  <ProfileField
+                    label="Mobile Number"
+                    icon={<Phone className="w-5 h-5 text-gray-400" />}
+                    name="mobile"
+                    value={profileData.mobile}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors ${
-                      isEditing
-                        ? "bg-white border-gray-300"
-                        : "bg-gray-50 border-gray-200 cursor-not-allowed"
-                    } ${errors.phone ? "border-red-500" : ""}`}
-                    placeholder="Enter your phone number"
+                    error={errors.mobile}
+                    placeholder="Enter your mobile number"
+                  />
+                  <ProfileField
+                    label="Role"
+                    icon={<Building2 className="w-5 h-5 text-gray-400" />}
+                    value={getRoleDisplayText(displayRole)}
+                    readOnly
                   />
                 </div>
-                {errors.phone && (
-                  <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+
+                {isEditing && (
+                  <div className="flex gap-3 mt-5 pt-5 border-t border-gray-200">
+                    <button
+                      onClick={handleSaveProfile}
+                      className="flex-1 md:flex-none px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save Changes
+                    </button>
+                    <button
+                      onClick={handleCancelProfile}
+                      className="flex-1 md:flex-none px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </button>
+                  </div>
                 )}
               </div>
 
-              {/* City */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  City
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    name="city"
-                    value={profileData.city}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors ${
-                      isEditing
-                        ? "bg-white border-gray-300"
-                        : "bg-gray-50 border-gray-200 cursor-not-allowed"
-                    }`}
-                    placeholder="Enter your city"
+              <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5 md:p-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Account Status
+                </h3>
+                <div className="mt-5 space-y-3">
+                  <StatusRow label="Status" value={displayValue(user?.status)} />
+                  <StatusRow
+                    label="Verified"
+                    value={user?.isVerified ? "Yes" : "No"}
+                    tone={user?.isVerified ? "success" : "muted"}
                   />
+                  <StatusRow
+                    label="Active"
+                    value={user?.isActive ? "Yes" : "No"}
+                    tone={user?.isActive ? "success" : "muted"}
+                  />
+                  {/* <StatusRow
+                    label="Created"
+                    value={formatDate(user?.createdAt)}
+                  />
+                  <StatusRow
+                    label="Profile Photo"
+                    value={profilePhoto ? "Uploaded" : "Not uploaded"}
+                    tone={profilePhoto ? "success" : "muted"}
+                  />
+                  <StatusRow
+                    label="Updated"
+                    value={formatDate(user?.updatedAt)}
+                  />
+                  <StatusRow
+                    label="Last Login"
+                    value={formatDate(user?.meta?.lastLoginAt)}
+                  />
+                  <StatusRow
+                    label="Approved At"
+                    value={formatDate(user?.approvedAt)}
+                  />
+                  <StatusRow
+                    label="Approved By"
+                    value={displayValue(user?.approvedBy)}
+                  /> */}
                 </div>
-              </div>
-
-              {/* Address - Full Width */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address
-                </label>
-                <textarea
-                  name="address"
-                  value={profileData.address}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  rows="3"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors resize-none ${
-                    isEditing
-                      ? "bg-white border-gray-300"
-                      : "bg-gray-50 border-gray-200 cursor-not-allowed"
-                  }`}
-                  placeholder="Enter your complete address"
-                />
-              </div>
-
-              {/* State */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  State
-                </label>
-                <input
-                  type="text"
-                  name="state"
-                  value={profileData.state}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors ${
-                    isEditing
-                      ? "bg-white border-gray-300"
-                      : "bg-gray-50 border-gray-200 cursor-not-allowed"
-                  }`}
-                  placeholder="Enter your state"
-                />
-              </div>
-
-              {/* Pincode */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pincode
-                </label>
-                <input
-                  type="text"
-                  name="pincode"
-                  value={profileData.pincode}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors ${
-                    isEditing
-                      ? "bg-white border-gray-300"
-                      : "bg-gray-50 border-gray-200 cursor-not-allowed"
-                  } ${errors.pincode ? "border-red-500" : ""}`}
-                  placeholder="Enter pincode"
-                />
-                {errors.pincode && (
-                  <p className="mt-1 text-sm text-red-600">{errors.pincode}</p>
-                )}
               </div>
             </div>
 
-            {/* Action Buttons */}
-            {isEditing && (
-              <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
-                <button
-                  onClick={handleSaveProfile}
-                  className="flex-1 md:flex-none px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Changes
-                </button>
-                <button
-                  onClick={() => {
-                    setIsEditing(false);
-                    setProfileData({
-                      name: user?.name || "",
-                      email: user?.email || "",
-                      phone: user?.phone || "",
-                      address: user?.address || "",
-                      city: user?.city || "",
-                      state: user?.state || "",
-                      pincode: user?.pincode || "",
-                    });
-                    setErrors({});
-                  }}
-                  className="flex-1 md:flex-none px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  Cancel
-                </button>
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Role Details
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Additional fields stored for your account type.
+                  </p>
+                </div>
               </div>
-            )}
+
+              {displayRole === "dealer" ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <ReadOnlyField label="Store Name" value={user?.storeName} />
+                    <ReadOnlyField
+                      label="Store GSTIN"
+                      value={user?.storeGstin}
+                      mono
+                    />
+                    <ReadOnlyField
+                      label="PAN Card"
+                      value={user?.panCard}
+                      mono
+                    />
+                    <ReadOnlyField
+                      label="Pin Code"
+                      value={user?.pinCode}
+                    />
+                    <div className="sm:col-span-2">
+                      <ReadOnlyField
+                        label="Store Address"
+                        value={user?.storeAddress}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Image className="w-5 h-5 text-amber-700" />
+                      <h4 className="font-semibold text-gray-900">
+                        Dealer Photos
+                      </h4>
+                      <span className="text-xs text-gray-500">
+                        {dealerPhotos.length} image{dealerPhotos.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {dealerPhotos.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {dealerPhotos.map((photo, index) => (
+                          <a
+                            key={`${photo}-${index}`}
+                            href={photo}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
+                          >
+                            <img
+                              src={photo}
+                              alt={`Dealer photo ${index + 1}`}
+                              className="h-28 w-full object-cover hover:scale-105 transition-transform duration-300"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        No dealer photos uploaded.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : displayRole === "employee" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ReadOnlyField label="PAN Card" value={user?.panCard} mono />
+                  <ReadOnlyField
+                    label="Aadhar Card"
+                    value={user?.aadharCard}
+                    mono
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ReadOnlyField
+                    label="Profile Photo"
+                    value={profilePhoto ? "Uploaded" : "Not uploaded"}
+                  />
+                  <ReadOnlyField
+                    label="Role"
+                    value={getRoleDisplayText(displayRole)}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -613,6 +677,79 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const ProfileField = ({
+  label,
+  icon,
+  name,
+  value,
+  onChange,
+  disabled = false,
+  readOnly = false,
+  error,
+  placeholder,
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+    </label>
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2">{icon}</span>
+      <input
+        type="text"
+        name={name}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        readOnly={readOnly}
+        className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors ${
+          disabled || readOnly
+            ? "bg-gray-50 border-gray-200 cursor-not-allowed"
+            : "bg-white border-gray-300"
+        } ${error ? "border-red-500" : ""}`}
+        placeholder={placeholder}
+      />
+    </div>
+    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+  </div>
+);
+
+const ReadOnlyField = ({ label, value, mono = false }) => (
+  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+    <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-500">
+      {label}
+    </p>
+    <p
+      className={`mt-2 text-sm font-semibold text-gray-900 break-words ${
+        mono ? "font-mono" : ""
+      }`}
+    >
+      {value ? value : "N/A"}
+    </p>
+  </div>
+);
+
+const StatusRow = ({ label, value, tone = "neutral" }) => {
+  const toneClasses = {
+    success: "bg-green-100 text-green-700",
+    muted: "bg-gray-100 text-gray-600",
+    accent: "bg-amber-100 text-amber-800",
+    neutral: "bg-gray-100 text-gray-600",
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-sm text-gray-500">{label}</span>
+      <span
+        className={`text-xs font-semibold px-3 py-1 rounded-full ${
+          toneClasses[tone] || toneClasses.neutral
+        }`}
+      >
+        {value}
+      </span>
     </div>
   );
 };

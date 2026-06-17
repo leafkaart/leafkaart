@@ -167,7 +167,8 @@ exports.listProducts = async (req, res) => {
     const products = await Product.find(filter)
       .populate("categoryId", "name")
       .populate("subCategoryId", "name")
-      .populate("dealerId", "name email");
+      .populate("dealerId", "name email")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: products });
   } catch (err) {

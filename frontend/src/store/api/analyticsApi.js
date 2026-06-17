@@ -4,7 +4,7 @@ export const analyticsApi = createApi({
   reducerPath: "analyticsApi",
 
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:1200/api/admin",
+    baseUrl: `${import.meta.env.VITE_BACKEND_URL}/admin`,
     prepareHeaders: (headers, { getState }) => {
       const token = getState()?.auth?.token;
      // console.log("TOKEN:", token);

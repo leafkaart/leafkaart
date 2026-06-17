@@ -406,32 +406,30 @@ export default function OrderDetail() {
                       Payment{" "}
                       {order.paymentStatus ? "Verified" : "Not Verified"}
                     </span>
-                      {/* Return / Replace / Cancel Request Status Badge */}
-                  {order.returnRequest?.type &&
-                    order.returnRequest?.status !== "none" && (
-                      <span
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
-                          order.returnRequest.status === "approved"
-                            ? "bg-green-100 text-green-700"
-                            : order.returnRequest.status === "rejected"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-orange-100 text-orange-700"
-                        }`}
-                      >
-                        {order.returnRequest.status === "approved" ? (
-                          <CheckCircle className="w-3.5 h-3.5" />
-                        ) : (
-                          <XCircle className="w-3.5 h-3.5" />
-                        )}
-                        {order.returnRequest.type.charAt(0).toUpperCase() +
-                          order.returnRequest.type.slice(1)}{" "}
-                        {order.returnRequest.status.charAt(0).toUpperCase() +
-                          order.returnRequest.status.slice(1)}
-                      </span>
-                    )}
+                    {/* Return / Replace / Cancel Request Status Badge */}
+                    {order.returnRequest?.type &&
+                      order.returnRequest?.status !== "none" && (
+                        <span
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                            order.returnRequest.status === "approved"
+                              ? "bg-green-100 text-green-700"
+                              : order.returnRequest.status === "rejected"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-orange-100 text-orange-700"
+                          }`}
+                        >
+                          {order.returnRequest.status === "approved" ? (
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5" />
+                          )}
+                          {order.returnRequest.type.charAt(0).toUpperCase() +
+                            order.returnRequest.type.slice(1)}{" "}
+                          {order.returnRequest.status.charAt(0).toUpperCase() +
+                            order.returnRequest.status.slice(1)}
+                        </span>
+                      )}
                   </div>
-
-                
 
                   {/* Divider */}
                   <div className="border-t border-dashed border-gray-200" />
@@ -589,48 +587,53 @@ export default function OrderDetail() {
                   Order Items
                 </h2>
                 <div className="space-y-4">
-                  {order.items?.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
-                    >
-                      <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <img
-                          src={item.product?.images[0]?.url}
-                          alt={item.title}
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">
-                          {item.title}
-                        </h3>
-                        {item.sku && (
-                          <p className="text-sm text-gray-600 font-mono">
-                            SKU: {item.sku}
-                          </p>
-                        )}
-                        <p className="text-sm text-gray-600">
-                          Quantity: {item.qty}
-                        </p>
+                  {order.items?.map((item, index) => {
+                    const itemPrice =
+                      isAdmin || isEmployee
+                        ? item.price
+                        : item.dealerPrice || 0;
 
-                        <p className="text-sm text-amber-700 font-medium">
-                          Dealer:{" "}
-                          {order?.dealerAssign?.dealer.name
-                            ? "Assigned"
-                            : "Not Assigned"}
-                        </p>
+                    const itemTotal =
+                      isAdmin || isEmployee
+                        ? item.total
+                        : (item.dealerPrice || 0) *
+                          (item.qty || 0);
+
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
+                      >
+                        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <img
+                            src={item.product?.images?.[0]?.url}
+                            alt={item.title}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        </div>
+
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">
+                            {item.title}
+                          </h3>
+
+                          <p className="text-sm text-gray-600">
+                            Quantity: {item.qty}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">
+                            ₹{itemPrice?.toLocaleString()}
+                          </p>
+
+                          <p className="text-sm text-gray-600">
+                            Total: ₹{itemTotal?.toLocaleString()}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">
-                          ₹{item.price.toLocaleString()}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Total: ₹{item.total.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -811,76 +814,85 @@ export default function OrderDetail() {
                     </div>
                   </div>
                 )}
-                {/* Resolved Return Request — show after approved/rejected */}
-{(isAdmin || isEmployee) &&
-  order.returnRequest?.type &&
-  ["approved", "rejected"].includes(order.returnRequest?.status) && (
-    <div
-      className={`bg-white rounded-lg border p-6 ${
-        order.returnRequest.status === "approved"
-          ? "border-green-200"
-          : "border-red-200"
-      }`}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        {order.returnRequest.status === "approved" ? (
-          <CheckCircle className="w-5 h-5 text-green-600" />
-        ) : (
-          <XCircle className="w-5 h-5 text-red-600" />
-        )}
-        <h2 className="text-lg font-semibold text-gray-900">
-          {order.returnRequest.type.charAt(0).toUpperCase() +
-            order.returnRequest.type.slice(1)}{" "}
-          Request{" "}
-          <span
-            className={
-              order.returnRequest.status === "approved"
-                ? "text-green-600"
-                : "text-red-600"
-            }
-          >
-            {order.returnRequest.status.charAt(0).toUpperCase() +
-              order.returnRequest.status.slice(1)}
-          </span>
-        </h2>
-      </div>
+              {/* Resolved Return Request — show after approved/rejected */}
+              {(isAdmin || isEmployee) &&
+                order.returnRequest?.type &&
+                ["approved", "rejected"].includes(
+                  order.returnRequest?.status
+                ) && (
+                  <div
+                    className={`bg-white rounded-lg border p-6 ${
+                      order.returnRequest.status === "approved"
+                        ? "border-green-200"
+                        : "border-red-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      {order.returnRequest.status === "approved" ? (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-600" />
+                      )}
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {order.returnRequest.type.charAt(0).toUpperCase() +
+                          order.returnRequest.type.slice(1)}{" "}
+                        Request{" "}
+                        <span
+                          className={
+                            order.returnRequest.status === "approved"
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {order.returnRequest.status.charAt(0).toUpperCase() +
+                            order.returnRequest.status.slice(1)}
+                        </span>
+                      </h2>
+                    </div>
 
-      {order.returnRequest.reason && (
-        <p className="text-sm text-gray-600 mb-2">
-          <span className="font-medium">Customer Reason:</span>{" "}
-          {order.returnRequest.reason}
-        </p>
-      )}
+                    {order.returnRequest.reason && (
+                      <p className="text-sm text-gray-600 mb-2">
+                        <span className="font-medium">Customer Reason:</span>{" "}
+                        {order.returnRequest.reason}
+                      </p>
+                    )}
 
-      {order.returnRequest.adminMessage && (
-        <p className="text-sm text-gray-600 mb-2">
-          <span className="font-medium">Your Message:</span>{" "}
-          {order.returnRequest.adminMessage}
-        </p>
-      )}
+                    {order.returnRequest.adminMessage && (
+                      <p className="text-sm text-gray-600 mb-2">
+                        <span className="font-medium">Your Message:</span>{" "}
+                        {order.returnRequest.adminMessage}
+                      </p>
+                    )}
 
-      {order.returnRequest.images?.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 mt-3">
-          {order.returnRequest.images.map((img, i) => (
-            <a key={i} href={img} target="_blank" rel="noreferrer">
-              <img
-                src={img}
-                alt={`proof-${i}`}
-                className="w-full h-24 object-cover rounded-lg border hover:opacity-80 transition"
-              />
-            </a>
-          ))}
-        </div>
-      )}
+                    {order.returnRequest.images?.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        {order.returnRequest.images.map((img, i) => (
+                          <a
+                            key={i}
+                            href={img}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <img
+                              src={img}
+                              alt={`proof-${i}`}
+                              className="w-full h-24 object-cover rounded-lg border hover:opacity-80 transition"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
 
-      {order.returnRequest.updatedAt && (
-        <p className="text-xs text-gray-400 mt-3">
-          Resolved at:{" "}
-          {new Date(order.returnRequest.updatedAt).toLocaleString()}
-        </p>
-      )}
-    </div>
-  )}
+                    {order.returnRequest.updatedAt && (
+                      <p className="text-xs text-gray-400 mt-3">
+                        Resolved at:{" "}
+                        {new Date(
+                          order.returnRequest.updatedAt
+                        ).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
               {order.timeline && order.timeline.length > 0 && (
                 <div className="bg-white rounded-lg border p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -987,10 +999,17 @@ export default function OrderDetail() {
                   Order Summary
                 </h2>
                 <div className="space-y-3">
-                  <div className="flex justify-between text-gray-700">
-                    <span>Subtotal</span>
-                    <span>₹{order.subTotal?.toLocaleString()}</span>
-                  </div>
+                  {isAdmin || isEmployee ? (
+                    <div className="flex justify-between text-gray-700">
+                      <span>Subtotal</span>
+                      <span>₹{order.subTotal?.toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-gray-700">
+                      <span>Subtotal</span>
+                      <span>₹{order.dealerShowSubTotal?.toLocaleString()}</span>
+                    </div>
+                  )}
                   {order.shippingCharges > 0 && (
                     <div className="flex justify-between text-gray-700">
                       <span>Shipping</span>
@@ -1009,15 +1028,23 @@ export default function OrderDetail() {
                       <span>-₹{order.discount?.toLocaleString()}</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-bold text-lg text-gray-900 pt-3 border-t">
-                    <span>Grand Total</span>
-                    <span>
-                      ₹
-                      {order.grandTotal?.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {}
+                  {/* <div className="flex justify-between font-bold text-lg text-gray-900 pt-3 border-t">
+                      <span>Grand Total</span>
+                      <span>₹{order.grandTotal?.toLocaleString()}</span>
+                    </div> */}
+                  {isAdmin || isEmployee ? (
+                    <div className="flex justify-between text-gray-700">
+                      <span>Grand Total</span>
+                      <span>₹{order.grandTotal?.toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-gray-700">
+                      <span>Grand Total</span>
+                      <span>
+                        ₹{order.dealerShowGrandTotal?.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1107,25 +1134,25 @@ export default function OrderDetail() {
                                 </div>
                               </div>
                               {/* <div className="text-right">
-                                {selectedDealer?._id ===
-                                  dealerObj.dealer._id && (
-                                  <CheckCircle className="w-6 h-6 text-amber-700 mb-2" />
-                                )}
-                                {dealerObj.products &&
-                                  dealerObj.products.length > 0 && (
-                                    <div className="bg-amber-100 px-3 py-1 rounded-full">
-                                      <p className="text-xs text-gray-600">
-                                        Total Commission
-                                      </p>
-                                      <p className="text-sm font-bold text-amber-700">
-                                        ₹
-                                        {calculateDealerProfit(
-                                          dealerObj.products
-                                        ).toLocaleString()}
-                                      </p>
-                                    </div>
+                                  {selectedDealer?._id ===
+                                    dealerObj.dealer._id && (
+                                    <CheckCircle className="w-6 h-6 text-amber-700 mb-2" />
                                   )}
-                              </div> */}
+                                  {dealerObj.products &&
+                                    dealerObj.products.length > 0 && (
+                                      <div className="bg-amber-100 px-3 py-1 rounded-full">
+                                        <p className="text-xs text-gray-600">
+                                          Total Commission
+                                        </p>
+                                        <p className="text-sm font-bold text-amber-700">
+                                          ₹
+                                          {calculateDealerProfit(
+                                            dealerObj.products
+                                          ).toLocaleString()}
+                                        </p>
+                                      </div>
+                                    )}
+                                </div> */}
                             </div>
 
                             {(() => {

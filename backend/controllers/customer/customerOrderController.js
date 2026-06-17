@@ -165,6 +165,7 @@ exports.createOrder = async (req, res) => {
       item.title = product.title;
       item.sku = product.sku;
       item.price = product.customerPrice || product.dealerPrice;
+      item.dealerPrice = product.dealerPrice || product.customerPrice || item.price;
       item.total = item.price * item.qty;
       item.dealer = product.dealerId;
       item.product = new mongoose.Types.ObjectId(item.product);
@@ -172,6 +173,10 @@ exports.createOrder = async (req, res) => {
 
     // --- CALCULATE TOTALS ---
     const computedSubTotal = items.reduce((sum, i) => sum + i.total, 0);
+    const dealerShowComputedSubTotal = items.reduce((sum, i) => {
+      const dealerPrice = Number(i.dealerPrice ?? i.price ?? 0);
+      return sum + dealerPrice * i.qty;
+    }, 0);
 
     const computedGrandTotal =
       Number(computedSubTotal) +
@@ -187,6 +192,14 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    const dealerShowComputedGrandTotal =
+      Number(dealerShowComputedSubTotal) +
+      Number(shippingCharges) +
+      Number(taxAmount) -
+      Number(discount);
+
+
+
     // --- CREATE ORDER NUMBER ---
     const orderNumber = "ORD-" + Date.now();
 
@@ -196,10 +209,13 @@ exports.createOrder = async (req, res) => {
       user: req.user._id,
       items,
       subTotal: computedSubTotal,
+      dealerShowSubTotal: dealerShowComputedSubTotal,
       shippingCharges,
       taxAmount,
       discount,
       grandTotal: computedGrandTotal,
+
+      dealerShowGrandTotal: dealerShowComputedGrandTotal,
       address: new mongoose.Types.ObjectId(address),
       payment: req.body.payment || null,
       paymentMethod,

@@ -23,6 +23,12 @@ export const ordersApi = createApi({
       transformResponse: (response) => response.data.orders || [],
     }),
 
+    getDealerOrders: builder.query({
+      query: () => "/dealer/orders/assigned-orders",
+      providesTags: ["Orders"],
+      transformResponse: (response) => response.data || [],
+    }),
+
     // Get single order
     getOrder: builder.query({
       query: (id) => `/admin/orders/getOrder/${id}`,
@@ -90,6 +96,7 @@ export const ordersApi = createApi({
 
 export const {
   useGetOrdersQuery,
+  useGetDealerOrdersQuery,
   useGetOrderQuery,
   useCreateOrderMutation,
   useAssignDealerToOrderMutation,

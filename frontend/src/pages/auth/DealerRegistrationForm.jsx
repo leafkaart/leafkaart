@@ -1,9 +1,12 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   Mail,
   Phone,
   Lock,
+  Eye,
+  EyeOff,
   Store,
   FileText,
   CreditCard,
@@ -16,6 +19,7 @@ import {
 import logo from "../../assets/logo.png";
 
 const DealerRegistrationForm = () => {
+  const navigate = useNavigate();
   const [showToast, setShowToast] = useState(false);
   const [toastType, setToastType] = useState("success");
   const [toastMessage, setToastMessage] = useState("");
@@ -23,6 +27,8 @@ const DealerRegistrationForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [dealerPhotos, setDealerPhotos] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -273,6 +279,8 @@ const DealerRegistrationForm = () => {
       });
       setErrors({});
       setCurrentStep(1);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       photoPreviews.forEach((preview) => URL.revokeObjectURL(preview));
       setDealerPhotos([]);
       setPhotoPreviews([]);
@@ -282,7 +290,10 @@ const DealerRegistrationForm = () => {
         "Registration successful! Your account is pending approval from admin."
       );
       setShowToast(true);
-      setTimeout(() => setShowToast(false), 5000);
+      setTimeout(() => {
+        setShowToast(false);
+        navigate("/login");
+      }, 2500);
     } catch (error) {
       console.error("Error:", error);
       setToastType("error");
@@ -489,11 +500,14 @@ const DealerRegistrationForm = () => {
                       required
                       icon={<Lock className="w-5 h-5 text-gray-400" />}
                       name="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={handleChange}
                       placeholder="Minimum 6 characters"
                       error={errors.password}
+                      showToggle
+                      isVisible={showPassword}
+                      onToggle={() => setShowPassword((prev) => !prev)}
                     />
                     <div className="md:col-span-2">
                       <TextField
@@ -501,11 +515,16 @@ const DealerRegistrationForm = () => {
                         required
                         icon={<Lock className="w-5 h-5 text-gray-400" />}
                         name="confirmPassword"
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         placeholder="Re-enter your password"
                         error={errors.confirmPassword}
+                        showToggle
+                        isVisible={showConfirmPassword}
+                        onToggle={() =>
+                          setShowConfirmPassword((prev) => !prev)
+                        }
                       />
                     </div>
                   </div>
@@ -772,6 +791,9 @@ const TextField = ({
   placeholder,
   maxLength,
   error,
+  showToggle = false,
+  isVisible = false,
+  onToggle,
 }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -785,11 +807,25 @@ const TextField = ({
         value={value}
         onChange={onChange}
         maxLength={maxLength}
-        className={`w-full pl-11 pr-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition ${
+        className={`w-full pl-11 ${showToggle ? "pr-12" : "pr-4"} py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition ${
           error ? "border-red-500" : "border-gray-200"
         }`}
         placeholder={placeholder}
       />
+      {showToggle && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+          aria-label={isVisible ? "Hide password" : "Show password"}
+        >
+          {isVisible ? (
+            <EyeOff className="w-5 h-5" />
+          ) : (
+            <Eye className="w-5 h-5" />
+          )}
+        </button>
+      )}
     </div>
     {error && (
       <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
