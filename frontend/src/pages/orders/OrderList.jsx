@@ -245,7 +245,7 @@ function OrderList() {
                       {/* Total Amount */}
                       <td className="py-4 px-4">
                         <span className="text-sm font-semibold text-gray-800">
-                          ₹{order.grandTotal?.toFixed(2)}
+                          ₹{order.dealerShowGrandTotal?.toFixed(2)}
                         </span>
                       </td>
 
