@@ -1,23 +1,24 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../store/slices/authSlice";
-import leaflogo from "../../assets/favicon.ico"
 import logo from '../../assets/logo.png';
 import {
-  LayoutDashboard,
-  Package,
-  Users,
-  UserCheck,
-  User,
-  ChevronDown,
-  LogOut,
-  Menu,
-  X,
-  Building2,
-  ArrowRightCircle,
-  Leaf
-} from "lucide-react";
+  MdDashboard,
+  MdCategory,
+  MdInventory2,
+  MdPeopleAlt,
+  MdBadge,
+  MdPerson,
+  MdCampaign,
+  MdShoppingBag,
+  MdKeyboardArrowDown,
+  MdLogout,
+  MdMenu,
+  MdClose,
+  MdBusiness,
+  MdArrowBack,
+} from "react-icons/md";
 
 const Sidebar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,61 +36,61 @@ const Sidebar = () => {
 
   // Define all menu items with roles and dynamic paths
   const allMenuItems = [
-    { 
-      id: "dashboard", 
-      label: "Dashboard", 
-      icon: LayoutDashboard, 
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: MdDashboard,
       getRolePath: (role) => `/${role}/dashboard`,
-      roles: ["admin", "employee", "dealer"] 
+      roles: ["admin", "employee", "dealer"]
     },
-    { 
-      id: "categories", 
-      label: "Categories", 
-      icon: LayoutDashboard, 
+    {
+      id: "categories",
+      label: "Categories",
+      icon: MdCategory,
       getRolePath: (role) => `/${role}/categories`,
-      roles: ["admin", "employee"] 
+      roles: ["admin", "employee"]
     },
-    { 
-      id: "products", 
-      label: "Products", 
-      icon: Package, 
+    {
+      id: "products",
+      label: "Products",
+      icon: MdInventory2,
       getRolePath: (role) => `/${role}/products`,
-      roles: ["admin", "employee", "dealer"] 
+      roles: ["admin", "employee", "dealer"]
     },
-    { 
-      id: "dealers", 
-      label: "Dealers", 
-      icon: Users, 
+    {
+      id: "dealers",
+      label: "Dealers",
+      icon: MdPeopleAlt,
       getRolePath: (role) => `/${role}/dealers`,
-      roles: ["admin", "employee"] 
+      roles: ["admin", "employee"]
     },
-    { 
-      id: "employees", 
-      label: "Employees", 
-      icon: UserCheck, 
+    {
+      id: "employees",
+      label: "Employees",
+      icon: MdBadge,
       getRolePath: () => "/admin/employees",
-      roles: ["admin"] 
+      roles: ["admin"]
     },
-    { 
-      id: "customers", 
-      label: "Customers", 
-      icon: User, 
+    {
+      id: "customers",
+      label: "Customers",
+      icon: MdPerson,
       getRolePath: (role) => `/${role}/customers`,
-      roles: ["admin", "employee"] 
+      roles: ["admin", "employee"]
     },
-    { 
-      id: "Banner", 
-      label: "Banner", 
-      icon: User, 
+    {
+      id: "Banner",
+      label: "Banner",
+      icon: MdCampaign,
       getRolePath: (role) => `/${role}/banners`,
-      roles: ["admin"] 
+      roles: ["admin"]
     },
-    { 
-      id: "Orders", 
-      label: "Orders", 
-      icon: User, 
+    {
+      id: "Orders",
+      label: "Orders",
+      icon: MdShoppingBag,
       getRolePath: (role) => `/${role}/orders`,
-      roles: ["admin","employee","dealer"] 
+      roles: ["admin", "employee", "dealer"]
     },
   ];
 
@@ -142,7 +143,7 @@ const Sidebar = () => {
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white shadow-md rounded-lg"
       >
-        <Menu className="w-6 h-6 text-gray-700" />
+        <MdMenu className="w-6 h-6 text-gray-700" />
       </button>
 
       {/* Mobile overlay */}
@@ -168,7 +169,7 @@ const Sidebar = () => {
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden p-1 rounded hover:bg-amber-100"
           >
-            <X className="w-5 h-5 text-gray-700" />
+            <MdClose className="w-5 h-5 text-gray-700" />
           </button>
         </div>
 
@@ -201,7 +202,7 @@ const Sidebar = () => {
                   </div>
 
                   {hasSubmenu && (
-                    <ChevronDown
+                    <MdKeyboardArrowDown
                       className={`w-4 h-4 transition-transform ${
                         isExpanded ? "rotate-180" : ""
                       }`}
@@ -239,7 +240,7 @@ const Sidebar = () => {
             <>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-amber-800 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-white" />
+                  <MdBusiness className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-sm text-gray-900">
@@ -259,15 +260,15 @@ const Sidebar = () => {
                 }}
                 className="w-full py-2 bg-amber-800 text-white rounded-lg flex items-center justify-center gap-2 hover:bg-amber-900 transition-all text-sm"
               >
-                <ArrowRightCircle className="w-4 h-4 rotate-180" />
+                <MdArrowBack className="w-4 h-4" />
                 Back to Admin
               </button>
             </>
           ) : (
             <>
-              <div className="flex items-center gap-3 mb-3" onClick={()=>navigate("/admin/profile")}>
+              <div className="flex items-center gap-3 mb-3" onClick={() => navigate("/admin/profile")}>
                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User className="w-5 h-5 text-gray-600" />
+                  <MdPerson className="w-5 h-5 text-gray-600" />
                 </div>
                 <div>
                   <p className="font-semibold text-sm text-gray-900">
@@ -286,7 +287,7 @@ const Sidebar = () => {
                 onClick={handleLogout}
                 className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center justify-center gap-2 transition-all text-sm"
               >
-                <LogOut className="w-4 h-4" />
+                <MdLogout className="w-4 h-4" />
                 Logout
               </button>
             </>
