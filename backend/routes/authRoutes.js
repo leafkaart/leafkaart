@@ -2,7 +2,14 @@ const express = require('express');
 const { register, verifyOtp, login, logout, forgotPassword, resetPassword, getUserDetails, updateUserDetails } = require('../controllers/auth/authController');
 const { dealerRegister, getAllDealers, updateDealer, deleteDealer } = require('../controllers/auth/dealerRegister');
 const { employeeRegister, getAllEmployees, updateEmployee, deleteEmployee } = require('../controllers/auth/employeeRegister');
-const { customerRegister, getAllCustomers, updateCustomer, deleteCustomer } = require('../controllers/auth/customerRegister');
+const {
+    sendOtp,
+    verifyAndRegister,
+    verifyAndLogin,
+    getAllCustomers,
+    updateCustomer,
+    deleteCustomer,
+} = require('../controllers/auth/customerRegister');
 
 const auth = require('../middlewares/authMiddleware');
 const { adminMiddleware } = require('../middlewares/roleMiddleware');
@@ -28,9 +35,12 @@ router.get("/getAllEmployees", getAllEmployees);
 router.patch("/updateEmployee/:id", updateEmployee);
 router.delete("/deleteEmployee/:id", deleteEmployee);
 
-router.post('/customer-register', customerRegister);
-router.get("/getAllCustomers", getAllCustomers);
-router.patch("/updateCustomer/:id", updateCustomer);
-router.delete("/deleteCustomer/:id", deleteCustomer);
+// ─── Customer (Twilio OTP) ────────────────────────────────────────────────────
+router.post('/customer/send-otp', sendOtp);           
+router.post('/customer/verify-register', verifyAndRegister); 
+router.post('/customer/verify-login', verifyAndLogin);    
+router.get('/getAllCustomers', getAllCustomers);
+router.patch('/updateCustomer/:id', updateCustomer);
+router.delete('/deleteCustomer/:id', deleteCustomer);
 
 module.exports = router;

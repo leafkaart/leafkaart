@@ -30,6 +30,13 @@ const userSchema = new Schema({
     type: Date,
   },
   status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+  activeTokens: [
+    {
+      token:      { type: String, required: true },
+      deviceInfo: { type: String, default: "Unknown Device" },
+      createdAt:  { type: Date,   default: Date.now },
+    }
+  ],
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
