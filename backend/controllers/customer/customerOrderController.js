@@ -184,7 +184,9 @@ exports.createOrder = async (req, res) => {
       Number(taxAmount) -
       Number(discount);
 
-    if (Number(grandTotal) !== Number(computedGrandTotal)) {
+    // ✅ FIX: use epsilon comparison instead of strict equality to avoid
+    // false "mismatch" errors from floating point rounding
+    if (Math.abs(Number(grandTotal) - Number(computedGrandTotal)) > 0.01) {
       return res.status(400).json({
         success: false,
         message: "Grand total mismatch",
@@ -274,8 +276,9 @@ exports.createOrder = async (req, res) => {
 
 exports.listOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate("user", "name email mobile")
+    // ✅ FIX: scope to the logged-in customer only — previously returned
+    // every order in the database to any authenticated user
+    const orders = await Order.find({ user: req.user._id })
       .populate("address")
       .populate("items.product", "title sku brand images customerPrice")
       .populate("items.dealer", "name mobile")
@@ -297,8 +300,9 @@ exports.listOrders = async (req, res) => {
 
 exports.getOrder = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id)
-      .populate("user", "name email mobile")
+    // ✅ FIX: filter by owner so a customer can't fetch another
+    // customer's order just by changing the :id in the URL (IDOR)
+    const order = await Order.findOne({ _id: req.params.id, user: req.user._id })
       .populate("address")
       .populate("items.product")
       .populate("items.dealer");
@@ -335,7 +339,10 @@ exports.requestReturnOrder = async (req, res) => {
       });
     }
 
-    const order = await Order.findById({
+    // ✅ FIX: findById only accepts a single id, not a filter object —
+    // passing { _id, user } into it caused a cast error / always failed.
+    // Must use findOne to filter by both _id and owner.
+    const order = await Order.findOne({
       _id: orderId,
       user: req.user._id,
     });
