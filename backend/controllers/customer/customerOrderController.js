@@ -66,40 +66,57 @@ exports.createOrder = async (req, res) => {
 
     // --- UPLOAD PAYMENT IMAGE (if provided) ---
     let paymentImageUrl = null;
-    let aadhaarImageUrl = null;
-    let panImageUrl = null;
+    let addharFrontImageUrl = null;
+    let aadharBackImageUrl = null;
+    let panCardImageUrl = null;
 
     if (paymentMethod === "EMI") {
-      if (!req.files?.aadhaarImage || !req.files?.panImage) {
+      const frontImage = req.files?.addharfrontimage || req.files?.aadhaarImage;
+      const backImage = req.files?.aadharbackimage;
+      const panCardImage = req.files?.pancardimage || req.files?.panImage;
+
+      if (!frontImage || !backImage || !panCardImage) {
         return res.status(400).json({
           success: false,
-          message: "Aadhaar and PAN images are required for EMI payment",
+          message: "Aadhar front, Aadhar back, and PAN card images are required for EMI payment",
         });
       }
 
-      const aadhaarUpload = await uploadImageToCloudinary(
-        req.files.aadhaarImage,
+      const addharFrontUpload = await uploadImageToCloudinary(
+        frontImage,
         "emi-documents",
         1000,
         1000
       );
 
-      const panUpload = await uploadImageToCloudinary(
-        req.files.panImage,
+      const aadharBackUpload = await uploadImageToCloudinary(
+        backImage,
         "emi-documents",
         1000,
         1000
       );
 
-      if (!aadhaarUpload?.secure_url || !panUpload?.secure_url) {
+      const panCardUpload = await uploadImageToCloudinary(
+        panCardImage,
+        "emi-documents",
+        1000,
+        1000
+      );
+
+      if (
+        !addharFrontUpload?.secure_url ||
+        !aadharBackUpload?.secure_url ||
+        !panCardUpload?.secure_url
+      ) {
         return res.status(500).json({
           success: false,
           message: "Failed to upload EMI documents",
         });
       }
 
-      aadhaarImageUrl = aadhaarUpload.secure_url;
-      panImageUrl = panUpload.secure_url;
+      addharFrontImageUrl = addharFrontUpload.secure_url;
+      aadharBackImageUrl = aadharBackUpload.secure_url;
+      panCardImageUrl = panCardUpload.secure_url;
     }
 
     if (req.files && req.files.paymentImage) {
@@ -222,8 +239,9 @@ exports.createOrder = async (req, res) => {
       payment: req.body.payment || null,
       paymentMethod,
       paymentImage: paymentImageUrl,
-      aadhaarImage: paymentMethod === "EMI" ? aadhaarImageUrl : null,
-      panImage: paymentMethod === "EMI" ? panImageUrl : null,
+      addharfrontimage: paymentMethod === "EMI" ? addharFrontImageUrl : null,
+      aadharbackimage: paymentMethod === "EMI" ? aadharBackImageUrl : null,
+      pancardimage: paymentMethod === "EMI" ? panCardImageUrl : null,
       paymentStatus: paymentStatus === 'true' || paymentStatus === true,
       timeline: [
         {
@@ -233,13 +251,6 @@ exports.createOrder = async (req, res) => {
         },
       ],
     });
-
-    // --- DEDUCT STOCK ---
-    for (const item of items) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: -item.qty }
-      });
-    }
 
     // --- CLEAR CART ---
     await Cart.findOneAndUpdate(
@@ -332,10 +343,10 @@ exports.requestReturnOrder = async (req, res) => {
     const { reason, serialNumber, modelNumber, type } = req.body;
     const orderId = req.params.id;
 
-    if (!type || !["return", "replace"].includes(type)) {
+    if (!type || !["return", "replace", "cancel"].includes(type)) {
       return res.status(400).json({
         success: false,
-        message: "Type must be 'return' or 'replace'",
+        message: "Type must be 'return', 'replace', or 'cancel'",
       });
     }
 
@@ -361,18 +372,21 @@ exports.requestReturnOrder = async (req, res) => {
       });
     }
 
-    if (!req.files || !req.files.images) {
+    if (type !== "cancel" && (!req.files || !req.files.images)) {
       return res.status(400).json({
         success: false,
         message: "Minimum 2 images required",
       });
     }
 
-    let images = Array.isArray(req.files.images)
-      ? req.files.images
-      : [req.files.images];
+    let images = [];
+    if (req.files?.images) {
+      images = Array.isArray(req.files.images)
+        ? req.files.images
+        : [req.files.images];
+    }
 
-    if (images.length < 2 || images.length > 6) {
+    if (type !== "cancel" && (images.length < 2 || images.length > 6)) {
       return res.status(400).json({
         success: false,
         message: "Upload min 2 and max 6 images",
@@ -410,12 +424,44 @@ exports.requestReturnOrder = async (req, res) => {
     };
 
     order.timeline.push({
-      status: type === "return" ? "return_requested" : "replace_requested",
+      status:
+        type === "return"
+          ? "return_requested"
+          : type === "replace"
+          ? "replace_requested"
+          : "cancel_requested",
       notes: reason,
       changedBy: req.user._id,
     });
 
     await order.save();
+
+    const adminIds = await getUserIdsByRoles(["admin"]);
+    const dealerIds = [];
+
+    if (order.dealerAssign?.dealer) {
+      dealerIds.push(order.dealerAssign.dealer.toString());
+    } else {
+      order.items.forEach((item) => {
+        if (item.dealer) {
+          dealerIds.push(item.dealer.toString());
+        }
+      });
+    }
+
+    const requestLabel =
+      type === "return"
+        ? "return"
+        : type === "replace"
+        ? "replacement"
+        : "cancellation";
+
+    await createAndSendNotifications({
+      userIds: [...adminIds, ...dealerIds],
+      orderId: order._id,
+      message: `Customer requested ${requestLabel} for order ${order.orderNumber}`,
+      type: "order",
+    });
 
     return res.json({
       success: true,

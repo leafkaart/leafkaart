@@ -51,7 +51,7 @@ exports.completeDashboard = async (req, res) => {
 
       Order.aggregate([
         { $match: { status: { $in: ["delivered", "completed"] } } },
-        { $group: { _id: null, revenue: { $sum: "$totalAmount" } } },
+        { $group: { _id: null, revenue: { $sum: "$grandTotal" } } },
       ]),
 
       // ✅ current month orders
@@ -72,7 +72,7 @@ exports.completeDashboard = async (req, res) => {
             status: { $in: ["delivered", "completed"] },
           },
         },
-        { $group: { _id: null, revenue: { $sum: "$totalAmount" } } },
+        { $group: { _id: null, revenue: { $sum: "$grandTotal" } } },
       ]),
 
       // ✅ last month revenue
@@ -83,7 +83,7 @@ exports.completeDashboard = async (req, res) => {
             status: { $in: ["delivered", "completed"] },
           },
         },
-        { $group: { _id: null, revenue: { $sum: "$totalAmount" } } },
+        { $group: { _id: null, revenue: { $sum: "$grandTotal" } } },
       ]),
     ]);
 
@@ -116,7 +116,7 @@ exports.completeDashboard = async (req, res) => {
             },
           },
           orders: { $sum: 1 },
-          revenue: { $sum: "$totalAmount" },
+          revenue: { $sum: "$grandTotal" },
         },
       },
       { $sort: { "_id": 1 } },
@@ -125,7 +125,7 @@ exports.completeDashboard = async (req, res) => {
     const recentOrders = await Order.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .select("orderId totalAmount status createdAt");
+      .select("orderNumber grandTotal status createdAt");
 
     const topProducts = await Order.aggregate([
       { $unwind: "$items" },
@@ -155,10 +155,12 @@ exports.completeDashboard = async (req, res) => {
     ]);
 
     const lowStockProducts = await Product.find({
-      stock: { $lte: 5 },
+      stock: { $lt: 20 },
     })
-      .limit(5)
-      .select("title stock");
+      .sort({ stock: 1, updatedAt: -1 })
+      .limit(20)
+      .populate("dealerId", "name email storeName")
+      .select("title sku stock dealerId createdAt updatedAt");
 
     res.json({
       success: true,

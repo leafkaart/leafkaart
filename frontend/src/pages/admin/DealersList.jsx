@@ -6,7 +6,6 @@ import {
   Building2,
   Plus,
   X,
-  CheckCircle,
   Store,
   Lock,
   Unlock,
@@ -17,19 +16,20 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DealerModal from "../../components/dealer/DealerModal";
+import { ToastContainer } from "../Toast/Toast";
+import { useToast } from "../../hooks/useToast";
 
 const DealersList = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
   const [dealers, setDealers] = useState([]);
   const [loadingDealerId, setLoadingDealerId] = useState(null);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [showDealerModal, setShowDealerModal] = useState(false);
   const [dealerPhotos, setDealerPhotos] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
+  const { toasts, addToast, removeToast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -47,7 +47,13 @@ const DealersList = () => {
 
   const roles = [{ value: "dealer", label: "Dealer", icon: Building2 }];
 
-  const filtered = dealers.filter(
+  const sortedDealers = [...dealers].sort((a, b) => {
+    const aTime = new Date(a?.createdAt || 0).getTime();
+    const bTime = new Date(b?.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+
+  const filtered = sortedDealers.filter(
     (d) =>
       d.name.toLowerCase().includes(search.toLowerCase()) ||
       d.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -183,20 +189,18 @@ const DealersList = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Something went wrong");
+        addToast(data.message || "Something went wrong", "error");
         return;
       }
 
       // Refresh dealers list
       fetchDealers();
 
-      setToastMessage("Dealer added successfully!");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
+      addToast("Dealer added successfully!", "success");
       closeModal();
     } catch (error) {
       console.error("Error:", error);
-      alert("Server Error!");
+      addToast("Server Error!", "error");
     }
   };
 
@@ -225,7 +229,7 @@ const DealersList = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to update status");
+        addToast(data.message || "Failed to update status", "error");
         return;
       }
 
@@ -243,16 +247,15 @@ const DealersList = () => {
         )
       );
 
-      setToastMessage(
+      addToast(
         nextIsActive
           ? "Dealer approved successfully!"
-          : "Dealer rejected successfully!"
+          : "Dealer rejected successfully!",
+        "success"
       );
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error("Error:", error);
-      alert("Server Error!");
+      addToast("Server Error!", "error");
     } finally {
       setLoadingDealerId(null);
     }
@@ -304,14 +307,20 @@ const DealersList = () => {
 
       // console.log(data, "resresres");
       if (!res.ok) {
-        alert(data.message || "Failed to fetch dealers");
+        addToast(data.message || "Failed to fetch dealers", "error");
         return;
       }
 
-      setDealers(data.data);
+      setDealers(
+        (data.data || []).slice().sort((a, b) => {
+          const aTime = new Date(a?.createdAt || 0).getTime();
+          const bTime = new Date(b?.createdAt || 0).getTime();
+          return bTime - aTime;
+        })
+      );
     } catch (error) {
       console.error("Fetch Dealers Error:", error);
-      alert("Server Error!");
+      addToast("Server Error!", "error");
     }
   };
 
@@ -327,21 +336,8 @@ const DealersList = () => {
           }}
         />
       )}
-      <div className="py-4 px-6 bg-gray-50 min-h-screen">
-        {/* Toast Notification */}
-        {showToast && (
-          <div className="fixed top-6 right-6 z-50 animate-slide-in">
-            <div className="bg-amber-800 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]">
-              <div className="bg-white bg-opacity-20 p-2 rounded-lg">
-                <CheckCircle className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="font-semibold">Success!</p>
-                <p className="text-sm text-amber-100">{toastMessage}</p>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="py-4 px-6 bg-gray-50 h-screen overflow-hidden flex flex-col">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -376,7 +372,8 @@ const DealersList = () => {
           {filtered.length} dealers found
         </p>
 
-        <div className="bg-white rounded-xl shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 min-h-0 overflow-hidden">
+          <div className="h-full overflow-y-auto">
           <table className="w-full text-left">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
@@ -532,6 +529,7 @@ const DealersList = () => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Modal */}

@@ -596,8 +596,7 @@ export default function OrderDetail() {
                     const itemTotal =
                       isAdmin || isEmployee
                         ? item.total
-                        : (item.dealerPrice || 0) *
-                          (item.qty || 0);
+                        : (item.dealerPrice || 0) * (item.qty || 0);
 
                     return (
                       <div
@@ -1006,43 +1005,48 @@ export default function OrderDetail() {
                     </div>
                   ) : (
                     <div className="flex justify-between text-gray-700">
-                      <span>Subtotal</span>
+                      <span>Grand Total</span>
                       <span>₹{order.dealerShowSubTotal?.toLocaleString()}</span>
                     </div>
                   )}
-                  {order.shippingCharges > 0 && (
-                    <div className="flex justify-between text-gray-700">
-                      <span>Shipping</span>
-                      <span>₹{order.shippingCharges?.toLocaleString()}</span>
-                    </div>
-                  )}
-                  {order.taxAmount > 0 && (
-                    <div className="flex justify-between text-gray-700">
-                      <span>Tax</span>
-                      <span>₹{order.taxAmount?.toLocaleString()}</span>
-                    </div>
-                  )}
-                  {order.discount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Discount</span>
-                      <span>-₹{order.discount?.toLocaleString()}</span>
-                    </div>
-                  )}
+
                   {/* <div className="flex justify-between font-bold text-lg text-gray-900 pt-3 border-t">
                       <span>Grand Total</span>
                       <span>₹{order.grandTotal?.toLocaleString()}</span>
                     </div> */}
                   {isAdmin || isEmployee ? (
-                    <div className="flex justify-between text-gray-700">
-                      <span>Grand Total</span>
-                      <span>₹{order.grandTotal?.toLocaleString()}</span>
-                    </div>
+                    <>
+                      {order.shippingCharges > 0 && (
+                        <div className="flex justify-between text-gray-700">
+                          <span>Shipping</span>
+                          <span>
+                            ₹{order.shippingCharges?.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      {order.taxAmount > 0 && (
+                        <div className="flex justify-between text-gray-700">
+                          <span>Tax</span>
+                          <span>₹{order.taxAmount?.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {order.discount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>Discount</span>
+                          <span>-₹{order.discount?.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-gray-700">
+                        <span>Grand Total</span>
+                        <span>₹{order.grandTotal?.toLocaleString()}</span>
+                      </div>
+                    </>
                   ) : (
                     <div className="flex justify-between text-gray-700">
-                      <span>Grand Total</span>
+                      {/* <span>Sub Total</span>
                       <span>
                         ₹{order.dealerShowGrandTotal?.toLocaleString()}
-                      </span>
+                      </span> */}
                     </div>
                   )}
                 </div>

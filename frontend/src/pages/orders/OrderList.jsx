@@ -34,14 +34,26 @@ function OrderList() {
     error: ordersError,
   } = useGetOrdersQuery();
 
+  const sortedOrders = [...orders].sort((a, b) => {
+    const aTime = new Date(a?.createdAt || 0).getTime();
+    const bTime = new Date(b?.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+
+  const getDisplayStatus = (order) =>
+    order.status === "delivered" && order.returnRequest?.status === "requested"
+      ? `${order.returnRequest.type}_requested`
+      : order.status;
+
   // Filter orders based on search and status
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = sortedOrders.filter((order) => {
     const matchesSearch =
       search === "" ||
       order.orderNumber?.toLowerCase().includes(search.toLowerCase()) ||
       order.user?.name?.toLowerCase().includes(search.toLowerCase());
 
-    const matchesStatus = selectedStatus === "" || order.status === selectedStatus;
+    const matchesStatus =
+      selectedStatus === "" || getDisplayStatus(order) === selectedStatus;
 
     return matchesSearch && matchesStatus;
   });
@@ -57,6 +69,9 @@ function OrderList() {
     { value: "delivered", label: "Delivered" },
     { value: "cancelled", label: "Cancelled" },
     { value: "returned", label: "Returned" },
+    { value: "return_requested", label: "Return Requested" },
+    { value: "replace_requested", label: "Replacement Requested" },
+    { value: "cancel_requested", label: "Cancellation Requested" },
   ];
 
   const getStatusColor = (status) => {
@@ -70,6 +85,9 @@ function OrderList() {
       delivered: "bg-green-100 text-green-700",
       cancelled: "bg-red-100 text-red-700",
       returned: "bg-gray-100 text-gray-700",
+      return_requested: "bg-orange-100 text-orange-700",
+      replace_requested: "bg-orange-100 text-orange-700",
+      cancel_requested: "bg-orange-100 text-orange-700",
     };
     return colors[status] || "bg-gray-100 text-gray-700";
   };
@@ -86,8 +104,8 @@ function OrderList() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="px-6 py-2">
+    <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
+      <main className="px-6 py-2 flex-1 flex flex-col overflow-hidden">
         {/* Title Bar with Search and Filter */}
         <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
           <h2 className="text-2xl font-bold text-gray-800">Order List</h2>
@@ -136,8 +154,8 @@ function OrderList() {
         )}
 
         {/* Orders Table */}
-        <div className="bg-white rounded-xl shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto border border-gray-100">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 min-h-0 overflow-hidden">
+          <div className="overflow-x-auto h-full overflow-y-auto">
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -245,7 +263,7 @@ function OrderList() {
                       {/* Total Amount */}
                       <td className="py-4 px-4">
                         <span className="text-sm font-semibold text-gray-800">
-                          ₹{order.dealerShowGrandTotal?.toFixed(2)}
+                          ₹{order.dealerShowSubTotal?.toFixed(2)}
                         </span>
                       </td>
 
@@ -266,10 +284,10 @@ function OrderList() {
                       <td className="py-4 px-4">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            order.status
+                            getDisplayStatus(order)
                           )}`}
                         >
-                          {formatStatus(order.status)}
+                          {formatStatus(getDisplayStatus(order))}
                         </span>
                       </td>
 

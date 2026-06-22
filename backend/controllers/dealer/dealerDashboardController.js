@@ -21,6 +21,21 @@ exports.getDealerDashboard = async (req, res) => {
         .populate("dealerAssign.dealer", "name email storeName"),
     ]);
 
+    const revenueAgg = await Order.aggregate([
+      {
+        $match: {
+          "dealerAssign.dealer": dealerId,
+          status: { $in: ["delivered", "completed"] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          revenue: { $sum: "$dealerShowGrandTotal" },
+        },
+      },
+    ]);
+
     const activeProducts = await Product.countDocuments({
       dealerId,
       isActive: true,
@@ -31,10 +46,13 @@ exports.getDealerDashboard = async (req, res) => {
       isApproved: true,
     });
 
-    const lowStockProducts = await Product.countDocuments({
+    const lowStockProducts = await Product.find({
       dealerId,
-      stock: { $lte: 5 },
-    });
+      stock: { $lt: 20 },
+    })
+      .sort({ stock: 1, updatedAt: -1 })
+      .select("title sku stock dealerId createdAt updatedAt")
+      .populate("dealerId", "name email storeName");
 
     const deliveredOrders = await Order.countDocuments({
       "dealerAssign.dealer": dealerId,
@@ -47,6 +65,7 @@ exports.getDealerDashboard = async (req, res) => {
     });
 
     const pendingOrders = Math.max(orders - deliveredOrders - processingOrders, 0);
+    const totalRevenue = revenueAgg[0]?.revenue || 0;
 
     return res.status(200).json({
       success: true,
@@ -68,11 +87,14 @@ exports.getDealerDashboard = async (req, res) => {
           isVerified: req.user.isVerified,
         },
         stats: {
+          revenue: {
+            total: totalRevenue,
+          },
           products: {
             total: products,
             active: activeProducts,
             approved: approvedProducts,
-            lowStock: lowStockProducts,
+            lowStock: lowStockProducts.length,
           },
           orders: {
             total: orders,
@@ -83,6 +105,7 @@ exports.getDealerDashboard = async (req, res) => {
         },
         recentProducts,
         recentOrders,
+        lowStockProducts,
       },
     });
   } catch (err) {

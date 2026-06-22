@@ -59,8 +59,9 @@ const orderSchema = new Schema(
       type: String,
       default: null,
     },
-    aadhaarImage: { type: String, default: null },
-    panImage: { type: String, default: null },
+    addharfrontimage: { type: String, default: null },
+    aadharbackimage: { type: String, default: null },
+    pancardimage: { type: String, default: null },
     paymentStatus: {
       type: Boolean,
       default: false,
@@ -92,6 +93,15 @@ const orderSchema = new Schema(
     ],
 
     meta: Schema.Types.Mixed,
+    inventoryStatus: {
+      state: {
+        type: String,
+        enum: ["none", "deducted", "restored"],
+        default: "none",
+      },
+      status: { type: String },
+      updatedAt: { type: Date },
+    },
     returnRequest: {
       type: {
         type: String,

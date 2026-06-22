@@ -6,16 +6,17 @@ import {
   Phone,
   Plus,
   X,
-  CheckCircle,
   MapPin,
   Users,
 } from "lucide-react";
+import { ToastContainer } from "../Toast/Toast";
+import { useToast } from "../../hooks/useToast";
 
 const CustomersList = () => {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [showToast, setShowToast] = useState(false);
   const [customers, setCustomers] = useState([]);
+  const { toasts, addToast, removeToast } = useToast();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -25,7 +26,13 @@ const CustomersList = () => {
 
   const [errors, setErrors] = useState({});
 
-  const filtered = customers.filter(
+  const sortedCustomers = [...customers].sort((a, b) => {
+    const aTime = new Date(a?.createdAt || 0).getTime();
+    const bTime = new Date(b?.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+
+  const filtered = sortedCustomers.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -72,22 +79,22 @@ const CustomersList = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Something went wrong");
+        addToast(data.message || "Something went wrong", "error");
         return;
       }
 
       const newCustomer = {
         id: customers.length + 1,
         ...formData,
+        createdAt: new Date().toISOString(),
       };
 
-      setCustomers([...customers, newCustomer]);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
+      setCustomers([newCustomer, ...customers]);
+      addToast("Customer added successfully!", "success");
       closeModal();
     } catch (error) {
       console.error("Error:", error);
-      alert("Server Error!");
+      addToast("Server Error!", "error");
     }
   };
 
@@ -116,35 +123,26 @@ const CustomersList = () => {
 
       // console.log(data, "customers response");
       if (!res.ok) {
-        alert(data.message || "Failed to fetch customers");
+        addToast(data.message || "Failed to fetch customers", "error");
         return;
       }
 
-      setCustomers(data.data);
+      setCustomers(
+        (data.data || []).slice().sort((a, b) => {
+          const aTime = new Date(a?.createdAt || 0).getTime();
+          const bTime = new Date(b?.createdAt || 0).getTime();
+          return bTime - aTime;
+        })
+      );
     } catch (error) {
       console.error("Fetch Customers Error:", error);
-      alert("Server Error!");
+      addToast("Server Error!", "error");
     }
   };
 
   return (
-    <div className="py-4 px-6 bg-gray-50 min-h-screen">
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed top-6 right-6 z-50 animate-slide-in">
-          <div className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]">
-            <div className="bg-white bg-opacity-20 p-2 rounded-lg">
-              <CheckCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="font-semibold">Customer Added Successfully!</p>
-              <p className="text-sm text-green-100">
-                Customer has been registered.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="py-4 px-6 bg-gray-50 h-screen overflow-hidden flex flex-col">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -180,8 +178,9 @@ const CustomersList = () => {
       </p>
 
       {/* Customers Table */}
-      <div className="bg-white rounded-xl shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto border border-gray-100">
-        <table className="w-full text-left">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 min-h-0 overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="py-3 px-4 font-medium text-gray-600 text-sm">
@@ -251,7 +250,8 @@ const CustomersList = () => {
               </tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       {/* Modal */}

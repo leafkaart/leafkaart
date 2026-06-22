@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
 const Order = require("../../models/Order");
-const Product = require("../../models/Product");
 const { sendEmail } = require("../../utils/emailService");
 const dealerTemplate = require("../../utils/dealerAssignedTemplate");
 const customerTemplate = require("../../utils/customerAssignedTemplate");
+const { syncOrderInventory } = require("../../utils/orderInventory");
 
 const ALLOWED_STATUSES = [
   "order_placed",
@@ -131,6 +131,7 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     order.status = status;
+    await syncOrderInventory(order, status);
 
     order.timeline.push({
       status,
@@ -395,14 +396,14 @@ exports.handleReturnRequest = async (req, res) => {
 
       // 🔁 RETURN FLOW
       if (requestType === "return") {
-        order.status = "Returned";
+        order.status = "returned";
+        await syncOrderInventory(order, order.status);
+      }
 
-        // Restore stock
-        for (const item of order.items) {
-          await Product.findByIdAndUpdate(item.product, {
-            $inc: { stock: item.qty },
-          });
-        }
+      // 🔁 CANCEL FLOW
+      if (requestType === "cancel") {
+        order.status = "cancelled";
+        await syncOrderInventory(order, order.status);
       }
 
       // 🔁 REPLACE FLOW
@@ -429,9 +430,13 @@ exports.handleReturnRequest = async (req, res) => {
         status === "approved"
           ? requestType === "return"
             ? "return_approved"
+            : requestType === "cancel"
+            ? "cancel_approved"
             : "replace_approved"
           : requestType === "return"
           ? "return_rejected"
+          : requestType === "cancel"
+          ? "cancel_rejected"
           : "replace_rejected",
       notes: message,
       changedBy: req.user._id,

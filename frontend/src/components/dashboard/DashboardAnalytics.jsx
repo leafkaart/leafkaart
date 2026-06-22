@@ -28,6 +28,7 @@ const DashboardAnalytics = () => {
     { refetchOnMountOrArgChange: true }
   );
   const overview = dashboardData?.data?.overview || {};
+  const lowStockProducts = dashboardData?.data?.lowStockProducts || [];
 
   const avgOrderValue =
     overview.totalOrders > 0 ? overview.totalRevenue / overview.totalOrders : 0;
@@ -91,6 +92,58 @@ const DashboardAnalytics = () => {
           icon={Package}
           loading={isLoading || isFetching}
         />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-amber-200 p-5 sm:p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Low Stock Alerts</h3>
+            <p className="text-sm text-gray-500">
+              Products with stock below 20 units
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-medium">
+            {lowStockProducts.length} items
+          </span>
+        </div>
+
+        {lowStockProducts.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {lowStockProducts.map((product) => (
+              <div
+                key={product._id}
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {product.title || "Untitled Product"}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      SKU: {product.sku || "N/A"}
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                    {product.stock} left
+                  </span>
+                </div>
+
+                {product.dealerId && (
+                  <p className="text-xs text-gray-500 mt-3">
+                    Dealer:{" "}
+                    {product.dealerId.storeName ||
+                      product.dealerId.name ||
+                      "N/A"}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
+            <p className="text-sm text-gray-500">No low stock products right now.</p>
+          </div>
+        )}
       </div>
     </div>
   );

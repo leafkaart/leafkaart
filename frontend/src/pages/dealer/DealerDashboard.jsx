@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Clock3,
   BadgeCheck,
+  DollarSign,
 } from "lucide-react";
 import { useGetDealerDashboardQuery } from "../../store/api/dealerDashboardApi";
 
@@ -29,6 +30,7 @@ const DealerDashboard = () => {
   const stats = dashboard.stats || {};
   const products = dashboard.recentProducts || [];
   const orders = dashboard.recentOrders || [];
+  const lowStockProducts = dashboard.lowStockProducts || [];
 
   const formatDate = (value) => {
     if (!value) return "N/A";
@@ -88,6 +90,13 @@ const DealerDashboard = () => {
             value={stats.orders?.delivered || 0}
             hint={`${stats.orders?.pending || 0} still open`}
             icon={<Clock3 className="w-5 h-5 text-blue-600" />}
+            loading={isLoading}
+          />
+          <StatCard
+            title="Total Revenue"
+            value={formatCurrency(stats.revenue?.total || 0)}
+            hint="Delivered orders only"
+            icon={<DollarSign className="w-5 h-5 text-emerald-600" />}
             loading={isLoading}
           />
         </div>
@@ -165,8 +174,6 @@ const DealerDashboard = () => {
           </div>
 
           <div className="space-y-6">
-       
-         
             <button
               type="button"
               onClick={() => navigate("/dealer/products")}
@@ -175,6 +182,38 @@ const DealerDashboard = () => {
               <Plus className="w-5 h-5" />
               Add New Product
             </button>
+
+            <Panel
+              title="Low Stock Alerts"
+              subtitle="Your products with stock below 20 units"
+            >
+              {lowStockProducts.length > 0 ? (
+                <div className="space-y-3">
+                  {lowStockProducts.map((product) => (
+                    <div
+                      key={product._id}
+                      className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {product.title || "Untitled Product"}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            SKU: {product.sku || "N/A"}
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm font-semibold">
+                          {product.stock} left
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState text="No low stock alerts for your products." />
+              )}
+            </Panel>
           </div>
         </div>
       </div>
@@ -210,6 +249,9 @@ const StatCard = ({ title, value, hint, icon, loading }) => (
     </div>
   </div>
 );
+
+const formatCurrency = (value) =>
+  `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
 const DetailRow = ({ label, value, mono = false }) => (
   <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-2 last:border-b-0 last:pb-0">

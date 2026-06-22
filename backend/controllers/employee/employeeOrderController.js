@@ -1,4 +1,5 @@
 const Order = require("../../models/Order");
+const { syncOrderInventory } = require("../../utils/orderInventory");
 
 // Allowed order status flow for employees
 const ALLOWED_STATUS = [
@@ -58,6 +59,7 @@ exports.updateStatus = async (req, res) => {
 
     // Update status
     order.status = status;
+    await syncOrderInventory(order, status);
 
     // Add timeline entry
     order.timeline.push({

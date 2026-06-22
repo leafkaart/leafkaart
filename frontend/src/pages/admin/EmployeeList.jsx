@@ -6,17 +6,18 @@ import {
   User,
   Plus,
   X,
-  CheckCircle,
   Info,
 } from "lucide-react";
 import EmployeeModal from "../../components/employee/EmployeeModal";
+import { ToastContainer } from "../Toast/Toast";
+import { useToast } from "../../hooks/useToast";
 
 const EmployeeList = () => {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [showToast, setShowToast] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { toasts, addToast, removeToast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -30,7 +31,13 @@ const EmployeeList = () => {
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [errors, setErrors] = useState({});
   const [loadingEmployeeId, setLoadingEmployeeId] = useState(null);
-  const filtered = employees.filter((e) => {
+  const sortedEmployees = [...employees].sort((a, b) => {
+    const aTime = new Date(a?.createdAt || 0).getTime();
+    const bTime = new Date(b?.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+
+  const filtered = sortedEmployees.filter((e) => {
     if (!e) return false;
     const name = (e.name || "").toLowerCase();
     const email = (e.email || "").toLowerCase();
@@ -104,13 +111,11 @@ const EmployeeList = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Something went wrong");
+        addToast(data.message || "Something went wrong", "error");
         return;
       }
 
-      // Show success toast
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
+      addToast("Employee added successfully!", "success");
 
       // Close modal
       closeModal();
@@ -118,7 +123,7 @@ const EmployeeList = () => {
       // Refresh the employee list from the server
       await fetchEmployees();
     } catch (error) {
-      alert("Server Error!");
+      addToast("Server Error!", "error");
       console.error("Add Employee Error:", error);
     }
   };
@@ -134,18 +139,24 @@ const EmployeeList = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to fetch employees");
+        addToast(data.message || "Failed to fetch employees", "error");
         return;
       }
 
       if (data.data && Array.isArray(data.data)) {
-        setEmployees(data.data);
+        setEmployees(
+          data.data.slice().sort((a, b) => {
+            const aTime = new Date(a?.createdAt || 0).getTime();
+            const bTime = new Date(b?.createdAt || 0).getTime();
+            return bTime - aTime;
+          })
+        );
       } else {
         console.error("Invalid data format:", data);
         setEmployees([]);
       }
     } catch (error) {
-      alert("Server Error!");
+      addToast("Server Error!", "error");
       console.error("Fetch Employees Error:", error);
       setEmployees([]);
     } finally {
@@ -168,7 +179,7 @@ const EmployeeList = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to update status");
+        addToast(data.message || "Failed to update status", "error");
         return;
       }
 
@@ -178,11 +189,10 @@ const EmployeeList = () => {
         )
       );
 
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
+      addToast("Employee status updated successfully!", "success");
     } catch (error) {
       console.error("Error:", error);
-      alert("Server Error!");
+      addToast("Server Error!", "error");
     } finally {
       setLoadingEmployeeId(null);
     }
@@ -193,18 +203,8 @@ const EmployeeList = () => {
 
   return (
     <>
-      <div className="py-4 px-6 bg-gray-50 min-h-screen">
-        {showToast && (
-          <div className="fixed top-6 right-6 z-50 animate-slide-in">
-            <div className="bg-green-700 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]">
-              <div className="bg-white bg-opacity-20 p-2 rounded-lg">
-                <CheckCircle className="w-6 h-6" />
-              </div>
-              <p className="font-semibold">Employee added successfully!</p>
-            </div>
-          </div>
-        )}
-
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <div className="py-4 px-6 bg-gray-50 h-screen overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Employee List</h1>
@@ -237,7 +237,8 @@ const EmployeeList = () => {
         </p>
 
         {/* Employee Table */}
-        <div className="bg-white rounded-xl shadow-sm max-h-[calc(100vh-100px)] overflow-y-auto border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 min-h-0 overflow-hidden">
+          <div className="h-full overflow-y-auto">
           <table className="w-full text-left table-fixed">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
@@ -366,6 +367,7 @@ const EmployeeList = () => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Add Modal */}
