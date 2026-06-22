@@ -360,7 +360,7 @@ const CategoryManagement = () => {
       )}
 
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 p-6 bg-gray-50">
+      <div className="flex-shrink-0 p-4 bg-gray-50">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-gray-800">
             Category Management

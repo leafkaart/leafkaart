@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Order = require("../../models/Order");
 const Product = require("../../models/Product");
-const Dealer = require("../../models/Dealer");
+const User = require("../../models/User");
 
 exports.completeDashboard = async (req, res) => {
   try {
@@ -47,7 +47,7 @@ exports.completeDashboard = async (req, res) => {
 
       Product.countDocuments(),
 
-      Dealer.countDocuments(),
+      User.countDocuments({ role: "dealer" }),
 
       Order.aggregate([
         { $match: { status: { $in: ["delivered", "completed"] } } },

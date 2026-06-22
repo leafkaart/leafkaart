@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import { Calendar, Home, ChevronRight } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import socketService from "../../socket.js";
 import {
@@ -7,7 +6,6 @@ import {
   setNotifications,
 } from "../../store/slices/notificationSlice.js";
 import { useGetNotificationsQuery } from "../../store/api/notificationApi.js";
-import NotificationBell from "../../components/NotificationBell.jsx";
 import DashboardAnalytics from "../../components/dashboard/DashboardAnalytics.jsx";
 
 const AdminDashboard = () => {
@@ -51,27 +49,6 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 -m-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-gray-900">Admin Panel</h2>
-          </div>
-          <div className="flex items-center gap-4">
-            <NotificationBell />
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
-              <Calendar className="w-4 h-4 text-gray-600" />
-              <span className="text-sm text-gray-700">
-                {new Date().toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Content Area */}
       <main className="flex-1">
         <div className="mb-6">

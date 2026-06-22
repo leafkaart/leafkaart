@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
 const User = require('../../models/User')
 const Product = require('../../models/Product');
-const Notification = require("../../models/Notification");
-const { getIO } = require("../../socket");
+const {
+  getUserIdsByRoles,
+  createAndSendNotifications,
+} = require("../../utils/notificationHelper");
 
 exports.pendingProducts = async (req, res) => {
   try {
@@ -63,15 +65,13 @@ exports.approveProduct = async (req, res) => {
 
     await product.save();
 
-    const notification = await Notification.create({
-      userId: product.dealerId,
-      message: `Your product "${product.name}" has been approved.`,
+    const adminAndEmployeeIds = await getUserIdsByRoles(["admin", "employee"]);
+    await createAndSendNotifications({
+      userIds: [product.dealerId?._id || product.dealerId, ...adminAndEmployeeIds],
+      message: `Your product "${product.title}" has been approved.`,
       productId: product._id,
-      type: "product"
+      type: "product",
     });
-
-    const io = getIO();
-    io.to(product.dealerId.toString()).emit("new_notification", notification);
 
     return res.status(200).json({
       success: true,
@@ -122,15 +122,13 @@ exports.rejectProduct = async (req, res) => {
 
     await product.save();
 
-    const notification = await Notification.create({
-      userId: product.dealerId,
-      message: `Your product "${product.name}" has been rejected by admin.`,
+    const adminAndEmployeeIds = await getUserIdsByRoles(["admin", "employee"]);
+    await createAndSendNotifications({
+      userIds: [product.dealerId?._id || product.dealerId, ...adminAndEmployeeIds],
+      message: `Your product "${product.title}" has been rejected by admin.`,
       productId: product._id,
-      type: "product"
+      type: "product",
     });
-
-    const io = getIO();
-    // io.to(product.dealerId.toString()).emit("new_notification", notification);
 
     return res.status(200).json({
       success: true,
