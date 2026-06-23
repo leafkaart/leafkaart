@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { useNotifications } from "../hooks/useNotifications";
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { notifications, unreadCount, markNotificationAsRead } = useNotifications();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const authUser = useSelector((state) => state.auth.user);
+  const user = authUser || JSON.parse(localStorage.getItem("user") || "{}");
   const role = user?.role?.toLowerCase() || "admin";
 
   const getNotificationRoute = (notification) => {

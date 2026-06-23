@@ -62,7 +62,7 @@ exports.getAllEmployees = async (req, res) => {
 exports.updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, mobile, role, panCard, aadharCard, status, isVerified } = req.body;
+    const { name, email, mobile, role, panCard, aadharCard, status, isVerified , isActive} = req.body;
 
     const employee = await User.findOne({ _id: id, role: "employee" });
 
@@ -80,6 +80,7 @@ exports.updateEmployee = async (req, res) => {
     // Optional: Admin can approve / reject employee
     if (status) employee.status = status;
     if (typeof isVerified !== "undefined") employee.isVerified = isVerified;
+    if (typeof isActive !== "undefined") employee.isActive = isActive;
 
     await employee.save();
 
