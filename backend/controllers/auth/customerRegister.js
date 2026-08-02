@@ -195,9 +195,124 @@ exports.verifyAndLogin = async (req, res) => {
 };
 
 // ─── ADMIN: Get All Customers ─────────────────────────────────────────────────
+// exports.getAllCustomers = async (req, res) => {
+//   try {
+//     const customers = await User.find({ role: "customer" }).select("-password");
+
+//     if (!customers || customers.length === 0) {
+//       return res.status(404).json({ message: "No customers found" });
+//     }
+
+//     return res.status(200).json({
+//       message: "Customers fetched successfully",
+//       total: customers.length,
+//       data: customers,
+//     });
+//   } catch (err) {
+//     console.error("Get Customers Error:", err);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// };
 exports.getAllCustomers = async (req, res) => {
   try {
-    const customers = await User.find({ role: "customer" }).select("-password");
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || "";
+
+    const matchStage = {
+      role: "customer",
+      ...(search && {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+          { mobile: { $regex: search, $options: "i" } },
+        ],
+      }),
+    };
+
+    const pipeline = [
+      { $match: matchStage },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+
+      // Addresses
+      {
+        $lookup: {
+          from: "addresses",
+          localField: "_id",
+          foreignField: "user",
+          as: "addresses",
+        },
+      },
+
+      // Orders
+      {
+        $lookup: {
+          from: "orders",
+          localField: "_id",
+          foreignField: "user",
+          as: "orders",
+        },
+      },
+
+      // Derived fields
+      {
+        $addFields: {
+          orderCount: { $size: "$orders" },
+          totalSpent: { $sum: "$orders.grandTotal" },
+          defaultAddress: {
+            $first: {
+              $filter: {
+                input: "$addresses",
+                as: "addr",
+                cond: { $eq: ["$$addr.isDefault", true] },
+              },
+            },
+          },
+        },
+      },
+
+      // Trim order payload to summary fields (avoid dumping full items/timeline per order)
+      {
+        $addFields: {
+          orders: {
+            $map: {
+              input: "$orders",
+              as: "order",
+              in: {
+                _id: "$$order._id",
+                orderNumber: "$$order.orderNumber",
+                status: "$$order.status",
+                paymentStatus: "$$order.paymentStatus",
+                isPaid: "$$order.isPaid",
+                grandTotal: "$$order.grandTotal",
+                itemCount: { $size: "$$order.items" },
+                createdAt: "$$order.createdAt",
+              },
+            },
+          },
+        },
+      },
+
+      // Drop sensitive/unnecessary fields
+      {
+        $project: {
+          password: 0,
+          otp: 0,
+          otpExpiry: 0,
+          activeTokens: 0,
+          panCard: 0,
+          aadharCard: 0,
+        },
+      },
+    ];
+
+    const [customers, totalCount] = await Promise.all([
+      User.aggregate(pipeline),
+      User.countDocuments(matchStage),
+    ]);
 
     if (!customers || customers.length === 0) {
       return res.status(404).json({ message: "No customers found" });
@@ -205,7 +320,9 @@ exports.getAllCustomers = async (req, res) => {
 
     return res.status(200).json({
       message: "Customers fetched successfully",
-      total: customers.length,
+      total: totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / limit),
       data: customers,
     });
   } catch (err) {

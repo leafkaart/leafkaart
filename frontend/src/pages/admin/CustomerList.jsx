@@ -8,9 +8,11 @@ import {
   X,
   MapPin,
   Users,
+  Info,
 } from "lucide-react";
 import { ToastContainer } from "../Toast/Toast";
 import { useToast } from "../../hooks/useToast";
+import CustomerModal from "../../components/customer/CustomerModal"; // adjust path if needed
 
 const CustomersList = () => {
   const [search, setSearch] = useState("");
@@ -25,6 +27,9 @@ const CustomersList = () => {
   });
 
   const [errors, setErrors] = useState({});
+
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   const sortedCustomers = [...customers].sort((a, b) => {
     const aTime = new Date(a?.createdAt || 0).getTime();
@@ -181,80 +186,130 @@ const CustomersList = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 min-h-0 overflow-hidden">
         <div className="h-full overflow-y-auto">
           <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                Customer Name
-              </th>
-              <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                Email
-              </th>
-              <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                Contact
-              </th>
-               <th className="py-3 px-4 font-medium text-gray-600 text-sm">Registered On</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.map((customer) => (
-              <tr
-                key={customer.id}
-                className="border-t border-gray-50 hover:bg-gray-50 transition"
-              >
-                {/* User Info */}
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <User className="w-5 h-5 text-blue-700" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-800 text-sm">
-                        {customer.name}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-
-                {/* Email */}
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-2 text-gray-600 text-sm">
-                    <Mail className="w-4 h-4 text-gray-400" /> {customer.email}
-                  </div>
-                </td>
-
-                {/* Contact */}
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-2 text-gray-600 text-sm">
-                    <Phone className="w-4 h-4 text-gray-400" />{" "}
-                    {customer.mobile}
-                  </div>
-                </td>
-                <td className="py-4 px-4">
-  <p className="text-sm text-gray-600">
-    {new Date(customer.createdAt).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })}
-  </p>
-</td>
-              </tr>
-            ))}
-
-            {filtered.length === 0 && (
+            <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <td colSpan="4" className="py-12 text-center text-gray-500">
-                  No customers found.
-                </td>
+                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                  Customer Name
+                </th>
+                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                  Email
+                </th>
+                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                  Contact
+                </th>
+                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                  Address
+                </th>
+                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                  Registered On
+                </th>
+                <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
+                  Actions
+                </th>
               </tr>
-            )}
-          </tbody>
+            </thead>
+
+            <tbody>
+              {filtered.map((customer) => {
+                const addr = customer.defaultAddress;
+
+                return (
+                  <tr
+                    key={customer.id}
+                    className="border-t border-gray-50 hover:bg-gray-50 transition"
+                  >
+                    {/* User Info */}
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-700" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-800 text-sm">
+                            {customer.name}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Email */}
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2 text-gray-600 text-sm">
+                        <Mail className="w-4 h-4 text-gray-400" />{" "}
+                        {customer.email}
+                      </div>
+                    </td>
+
+                    {/* Contact */}
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2 text-gray-600 text-sm">
+                        <Phone className="w-4 h-4 text-gray-400" />{" "}
+                        {customer.mobile}
+                      </div>
+                    </td>
+
+                    {/* Address */}
+                    <td className="py-4 px-4">
+                      {addr ? (
+                        <div className="flex items-start gap-2 text-gray-600 text-sm max-w-xs">
+                          <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                          <span className="truncate">
+                            {addr.line1}, {addr.city}, {addr.state} -{" "}
+                            {addr.pincode}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">
+                          No address
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="py-4 px-4">
+                      <p className="text-sm text-gray-600">
+                        {new Date(customer.createdAt).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          }
+                        )}
+                      </p>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-4 px-4">
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setShowCustomerModal(true);
+                          }}
+                          className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                          title="View Details"
+                        >
+                          <Info className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="py-12 text-center text-gray-500">
+                    No customers found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Add Customer Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -351,6 +406,17 @@ const CustomersList = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Customer Details Modal */}
+      {showCustomerModal && selectedCustomer && (
+        <CustomerModal
+          customer={selectedCustomer}
+          onClose={() => {
+            setShowCustomerModal(false);
+            setSelectedCustomer(null);
+          }}
+        />
       )}
 
       <style>{`
