@@ -7,7 +7,8 @@ import { useNotifications } from "../hooks/useNotifications";
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
-  const { notifications, unreadCount, markNotificationAsRead } = useNotifications();
+  const { notifications, unreadCount, markNotificationAsRead } =
+    useNotifications();
   const authUser = useSelector((state) => state.auth.user);
   const user = authUser || JSON.parse(localStorage.getItem("user") || "{}");
   const role = user?.role?.toLowerCase() || "admin";
@@ -57,8 +58,8 @@ const NotificationBell = () => {
       >
         <Bell className="w-6 h-6" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-            {unreadCount > 9 ? "9+" : unreadCount}
+          <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center">
+            {unreadCount}
           </span>
         )}
       </button>
@@ -76,7 +77,7 @@ const NotificationBell = () => {
                 <p className="text-sm text-gray-500">{unreadCount} unread</p>
               )}
             </div>
-            
+
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 No notifications yet
@@ -91,7 +92,9 @@ const NotificationBell = () => {
                       !notification.isRead ? "bg-blue-50" : ""
                     }`}
                   >
-                    <p className="text-sm text-gray-800">{notification.message}</p>
+                    <p className="text-sm text-gray-800">
+                      {notification.message}
+                    </p>
                     <p className="text-xs text-gray-500 mt-1">
                       {new Date(notification.createdAt).toLocaleDateString()}
                     </p>
