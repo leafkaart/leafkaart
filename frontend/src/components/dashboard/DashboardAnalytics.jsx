@@ -1,6 +1,7 @@
 import React from "react";
 import { TrendingUp, Package, DollarSign, AlertCircle } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { useGetDashboardQuery } from "../../store/api/analyticsApi";
 import { setDateRange, setGroupBy } from "../../store/slices/analyticsSlice";
 
@@ -9,6 +10,11 @@ import DateRangeFilter from "./DateRangeFilter";
 
 const DashboardAnalytics = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const authUser = useSelector((state) => state.auth.user);
+  const user = authUser || JSON.parse(localStorage.getItem("user") || "{}");
+  const role = user?.role?.toLowerCase() || "admin";
 
   const { selectedDateRange, selectedGroupBy } = useSelector(
     (state) => state.analytics
@@ -44,6 +50,10 @@ const DashboardAnalytics = () => {
 
   const handleGroupByChange = (groupBy) => {
     dispatch(setGroupBy(groupBy));
+  };
+
+  const handleProductClick = (product) => {
+    navigate(`/${role}/products/${product._id}`);
   };
 
   if (error) {
@@ -97,7 +107,9 @@ const DashboardAnalytics = () => {
       <div className="bg-white rounded-2xl border border-amber-200 p-5 sm:p-6 shadow-sm">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Low Stock Alerts</h3>
+            <h3 className="text-lg font-bold text-gray-900">
+              Low Stock Alerts
+            </h3>
             <p className="text-sm text-gray-500">
               Products with stock below 20 units
             </p>
@@ -112,7 +124,8 @@ const DashboardAnalytics = () => {
             {lowStockProducts.map((product) => (
               <div
                 key={product._id}
-                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                onClick={() => handleProductClick(product)}
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4 cursor-pointer hover:border-amber-300 hover:bg-amber-50/50 hover:shadow-sm transition"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -141,7 +154,9 @@ const DashboardAnalytics = () => {
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
-            <p className="text-sm text-gray-500">No low stock products right now.</p>
+            <p className="text-sm text-gray-500">
+              No low stock products right now.
+            </p>
           </div>
         )}
       </div>
