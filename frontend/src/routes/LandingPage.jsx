@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import onlylogo from "../assets/onlylogo.png";
 import vocalforlocal from "../assets/vocalforlocal.png";
-import { useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+
 
 function LandingPage() {
   const [floatingElements, setFloatingElements] = useState([0, 0, 0]);
@@ -186,8 +187,11 @@ function LandingPage() {
               {/* Connection lines */}
               <div className="hidden md:block absolute top-20 left-1/6 right-1/6 h-1 theme-decorative-1"></div>
 
-              <div className="relative bg-gray-50 rounded-2xl p-8 text-center hover:shadow-xl transition transform hover:-translate-y-2">
-                <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-xl shadow-md flex items-center justify-center">
+              <div className="relative bg-gray-50 rounded-2xl p-8 text-center hover:shadow-xl transition transform hover:-translate-y-2 cursor-pointer"
+              onClick={() => navigate("/register")}
+              >
+
+                <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-xl shadow-md flex items-center justify-center ">
                   <Users className="w-16 h-16 theme-primary-light" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4 theme-text-primary">
@@ -199,7 +203,8 @@ function LandingPage() {
                 </p>
               </div>
 
-              <div className="relative bg-gray-50 rounded-2xl p-8 text-center hover:shadow-xl transition transform hover:-translate-y-2">
+              <div className="relative bg-gray-50 rounded-2xl p-8 text-center hover:shadow-xl transition transform hover:-translate-y-2 cursor-pointer"
+               onClick={() => navigate("/register")}>
                 <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-xl shadow-md flex items-center justify-center">
                   <Package className="w-16 h-16 theme-primary-light" />
                 </div>
@@ -212,7 +217,8 @@ function LandingPage() {
                 </p>
               </div>
 
-              <div className="relative bg-gray-50 rounded-2xl p-8 text-center hover:shadow-xl transition transform hover:-translate-y-2">
+              <div className="relative bg-gray-50 rounded-2xl p-8 text-center hover:shadow-xl transition transform hover:-translate-y-2 cursor-pointer"
+               onClick={() => navigate("/register")}>
                 <div className="w-32 h-32 mx-auto mb-6 bg-white rounded-xl shadow-md flex items-center justify-center">
                   <Truck className="w-16 h-16 theme-primary-light" />
                 </div>
@@ -371,28 +377,28 @@ function LandingPage() {
                 <h4 className="font-bold mb-4">Quick Links</h4>
                 <ul className="space-y-2 text-gray-400">
                   <li>
-                    <a
-                      href="#benefits"
+                    <NavLink
+                      to="#benefits"
                       className="hover:text-amber-400 transition"
                     >
                       Benefits
-                    </a>
+                    </NavLink>
                   </li>
                   <li>
-                    <a
-                      href="#how-it-works"
+                    <NavLink
+                      to="#how-it-works"
                       className="hover:text-amber-400 transition"
                     >
                       How It Works
-                    </a>
+                    </NavLink>
                   </li>
                   <li>
-                    <a
-                      href="#features"
+                    <NavLink
+                      to="#features"
                       className="hover:text-amber-400 transition"
                     >
                       Features
-                    </a>
+                    </NavLink>
                   </li>
                 </ul>
               </div>
@@ -400,19 +406,19 @@ function LandingPage() {
                 <h4 className="font-bold mb-4">For Dealers</h4>
                 <ul className="space-y-2 text-gray-400">
                   <li>
-                    <a href="#" className="hover:text-amber-400 transition">
+                    <NavLink to="/register" className="hover:text-amber-400 transition">
                       Register
-                    </a>
+                    </NavLink>
                   </li>
                   <li>
-                    <a href="#" className="hover:text-amber-400 transition">
+                    <NavLink to="/login" className="hover:text-amber-400 transition">
                       Login
-                    </a>
+                    </NavLink>
                   </li>
                   <li>
-                    <a href="#" className="hover:text-amber-400 transition">
+                    <NavLink to="#" className="hover:text-amber-400 transition">
                       Support
-                    </a>
+                    </NavLink>
                   </li>
                 </ul>
               </div>

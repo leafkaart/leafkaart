@@ -44,6 +44,7 @@ const DealersList = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(true);
 
   const roles = [{ value: "dealer", label: "Dealer", icon: Building2 }];
 
@@ -151,7 +152,9 @@ const DealersList = () => {
   };
 
   const removePhoto = (index) => {
-    const nextFiles = dealerPhotos.filter((_, fileIndex) => fileIndex !== index);
+    const nextFiles = dealerPhotos.filter(
+      (_, fileIndex) => fileIndex !== index
+    );
     const nextPreviews = photoPreviews.filter(
       (_, previewIndex) => previewIndex !== index
     );
@@ -297,6 +300,7 @@ const DealersList = () => {
   }, []);
 
   const fetchDealers = async () => {
+    setLoading(true);
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/auth/getAllDealers`,
@@ -305,7 +309,6 @@ const DealersList = () => {
 
       const data = await res.json();
 
-      // console.log(data, "resresres");
       if (!res.ok) {
         addToast(data.message || "Failed to fetch dealers", "error");
         return;
@@ -321,6 +324,8 @@ const DealersList = () => {
     } catch (error) {
       console.error("Fetch Dealers Error:", error);
       addToast("Server Error!", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -374,161 +379,175 @@ const DealersList = () => {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 min-h-0 overflow-hidden">
           <div className="h-full overflow-y-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                  Dealer Name
-                </th>
-                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                  Store Name
-                </th>
-                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                  PinCode
-                </th>
-                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                  Contact
-                </th>
-                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                  Role
-                </th>
-                <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                  Status
-                </th>
-                <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filtered.map((dealer) => (
-                <tr
-                  key={dealer._id}
-                  className="border-t border-gray-50 hover:bg-gray-50 transition"
-                >
-                  {/* Dealer Name */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                        <User className="w-5 h-5 text-amber-700" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800 text-sm">
-                          {dealer.name}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Store Name */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2 text-gray-600 text-sm">
-                      <Store className="w-4 h-4 text-gray-400" />
-                      {dealer.storeName || "N/A"}
-                    </div>
-                  </td>
-
-                  {/* Email */}
-                  <td className="py-4 px-4">
-                  <div className="flex items-center gap-2 text-gray-600 text-sm">
-                      {dealer.pinCode || "N/A"}
-                   
-                  </div>
-                </td>
-
-                  {/* Mobile */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2 text-gray-600 text-sm">
-                      <Phone className="w-4 h-4 text-gray-400" />{" "}
-                      {dealer.mobile}
-                    </div>
-                  </td>
-
-                  {/* Role Badge */}
-                  <td className="py-4 px-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(
-                        dealer.role
-                      )}`}
-                    >
-                      {dealer.role.toUpperCase()}
-                    </span>
-                  </td>
-
-                  {/* Account Status */}
-                  <td className="py-4 px-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        dealer.isActive
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {dealer.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center justify-center gap-3">
-                      {/* Toggle Button */}
-                      <button
-                        onClick={() => toggleAccountStatus(dealer)}
-                        disabled={loadingDealerId === dealer._id}
-                        title={
-                          dealer.isActive
-                            ? "Deactivate Account"
-                            : "Activate Account"
-                        }
-                        className={`relative inline-flex items-center w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
-                          dealer.isActive ? "bg-green-500" : "bg-gray-300"
-                        } ${
-                          loadingDealerId === dealer._id
-                            ? "opacity-50 cursor-not-allowed"
-                            : "cursor-pointer"
-                        }`}
-                      >
-                        {loadingDealerId === dealer._id ? (
-                          <span className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          </span>
-                        ) : (
-                          <span
-                            className={`inline-block w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 ${
-                              dealer.isActive
-                                ? "translate-x-6"
-                                : "translate-x-1"
-                            }`}
-                          />
-                        )}
-                      </button>
-
-                      {/* Info Button */}
-                      <button
-                        onClick={() => {
-                          setSelectedDealer(dealer);
-                          setShowDealerModal(true);
-                        }}
-                        className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
-                        title="View Details"
-                      >
-                        <Info className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filtered.length === 0 && (
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-gray-500">
-                    No dealers found.
-                  </td>
+                  <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                    Dealer Name
+                  </th>
+                  <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                    Store Name
+                  </th>
+                  <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                    PinCode
+                  </th>
+                  <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                    Contact
+                  </th>
+                  <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                    Role
+                  </th>
+                  <th className="py-3 px-4 font-medium text-gray-600 text-sm">
+                    Status
+                  </th>
+                  <th className="py-3 px-4 font-medium text-gray-600 text-sm text-center">
+                    Actions
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="py-12 text-center">
+                      <div className="flex justify-center items-center">
+                        <div className="w-6 h-6 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <>
+                    {filtered.map((dealer) => (
+                      <tr
+                        key={dealer._id}
+                        className="border-t border-gray-50 hover:bg-gray-50 transition"
+                      >
+                        {/* Dealer Name */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                              <User className="w-5 h-5 text-amber-700" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-800 text-sm">
+                                {dealer.name}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Store Name */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2 text-gray-600 text-sm">
+                            <Store className="w-4 h-4 text-gray-400" />
+                            {dealer.storeName || "N/A"}
+                          </div>
+                        </td>
+
+                        {/* Email */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2 text-gray-600 text-sm">
+                            {dealer.pinCode || "N/A"}
+                          </div>
+                        </td>
+
+                        {/* Mobile */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2 text-gray-600 text-sm">
+                            <Phone className="w-4 h-4 text-gray-400" />{" "}
+                            {dealer.mobile}
+                          </div>
+                        </td>
+
+                        {/* Role Badge */}
+                        <td className="py-4 px-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(
+                              dealer.role
+                            )}`}
+                          >
+                            {dealer.role.toUpperCase()}
+                          </span>
+                        </td>
+
+                        {/* Account Status */}
+                        <td className="py-4 px-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              dealer.isActive
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {dealer.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center justify-center gap-3">
+                            {/* Toggle Button */}
+                            <button
+                              onClick={() => toggleAccountStatus(dealer)}
+                              disabled={loadingDealerId === dealer._id}
+                              title={
+                                dealer.isActive
+                                  ? "Deactivate Account"
+                                  : "Activate Account"
+                              }
+                              className={`relative inline-flex items-center w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
+                                dealer.isActive ? "bg-green-500" : "bg-gray-300"
+                              } ${
+                                loadingDealerId === dealer._id
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer"
+                              }`}
+                            >
+                              {loadingDealerId === dealer._id ? (
+                                <span className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                </span>
+                              ) : (
+                                <span
+                                  className={`inline-block w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 ${
+                                    dealer.isActive
+                                      ? "translate-x-6"
+                                      : "translate-x-1"
+                                  }`}
+                                />
+                              )}
+                            </button>
+
+                            {/* Info Button */}
+                            <button
+                              onClick={() => {
+                                setSelectedDealer(dealer);
+                                setShowDealerModal(true);
+                              }}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                              title="View Details"
+                            >
+                              <Info className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {filtered.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan="7"
+                          className="py-12 text-center text-gray-500"
+                        >
+                          No dealers found.
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -796,69 +815,69 @@ const DealersList = () => {
                         }`}
                         placeholder="Enter complete store address"
                       />
-                    {errors.storeAddress && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.storeAddress}
-                      </p>
-                    )}
-                  </div>
+                      {errors.storeAddress && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.storeAddress}
+                        </p>
+                      )}
+                    </div>
 
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Dealer Photos *
-                    </label>
-                    <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-amber-300 bg-amber-50 rounded-lg px-4 py-5 cursor-pointer hover:bg-amber-100 transition">
-                      <Image className="w-5 h-5 text-amber-700" />
-                      <span className="text-sm font-medium text-gray-700">
-                        Upload 3 to 5 dealer photos
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        The admin will review these before approval
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handlePhotoChange}
-                        className="hidden"
-                      />
-                    </label>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {dealerPhotos.length}/5 selected
-                    </p>
-                    {errors.dealerPhotos && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.dealerPhotos}
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Dealer Photos *
+                      </label>
+                      <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-amber-300 bg-amber-50 rounded-lg px-4 py-5 cursor-pointer hover:bg-amber-100 transition">
+                        <Image className="w-5 h-5 text-amber-700" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Upload 3 to 5 dealer photos
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          The admin will review these before approval
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {dealerPhotos.length}/5 selected
                       </p>
-                    )}
+                      {errors.dealerPhotos && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.dealerPhotos}
+                        </p>
+                      )}
 
-                    {photoPreviews.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2 mt-3">
-                        {photoPreviews.map((preview, index) => (
-                          <div
-                            key={`${preview}-${index}`}
-                            className="relative rounded-lg overflow-hidden border border-gray-200"
-                          >
-                            <img
-                              src={preview}
-                              alt={`Dealer preview ${index + 1}`}
-                              className="h-20 w-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removePhoto(index)}
-                              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
-                              aria-label={`Remove photo ${index + 1}`}
+                      {photoPreviews.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mt-3">
+                          {photoPreviews.map((preview, index) => (
+                            <div
+                              key={`${preview}-${index}`}
+                              className="relative rounded-lg overflow-hidden border border-gray-200"
                             >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                              <img
+                                src={preview}
+                                alt={`Dealer preview ${index + 1}`}
+                                className="h-20 w-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removePhoto(index)}
+                                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
+                                aria-label={`Remove photo ${index + 1}`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
               </div>
 
               {/* Modal Footer */}
