@@ -70,8 +70,14 @@ const orderSchema = new Schema(
     status: {
       type: String,
       enum: [
+        "pending",
+        "confirmed",
+        "assigned",
+        "payment_approved",
         "order_placed",
         "processing",
+        "dispatched",
+        "in_transit",
         "packed",
         "ready_for_dispatch",
         "shipped",
@@ -79,6 +85,7 @@ const orderSchema = new Schema(
         "delivered",
         "cancelled",
         "returned",
+        "refunded",
       ],
       default: "order_placed",
       index: true,
@@ -86,11 +93,73 @@ const orderSchema = new Schema(
     timeline: [
       {
         status: String,
+        action: { type: String, required: true },
+        performedById: { type: Schema.Types.ObjectId, ref: "User" },
+        performedByName: { type: String, required: true },
+        performedByRole: { type: String, required: true },
+        remarks: String,
+        createdAt: { type: Date, default: Date.now },
+        // Legacy aliases kept temporarily for backwards compatibility.
+        actionPerformed: String,
+        employeeId: { type: Schema.Types.ObjectId, ref: "User" },
+        employeeName: String,
+        employeeRole: String,
+        updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
         notes: String,
         changedBy: { type: Schema.Types.ObjectId, ref: "User" },
+        timestamp: { type: Date, default: Date.now },
         at: { type: Date, default: Date.now },
       },
     ],
+
+    latestAction: {
+      action: String,
+      performedById: { type: Schema.Types.ObjectId, ref: "User" },
+      performedByName: String,
+      performedByRole: String,
+      remarks: String,
+      createdAt: Date,
+      // Legacy aliases kept temporarily for backwards compatibility.
+      actionPerformed: String,
+      employeeId: { type: Schema.Types.ObjectId, ref: "User" },
+      employeeName: String,
+      employeeRole: String,
+      timestamp: Date,
+    },
+
+    paymentReview: {
+      status: {
+        type: String,
+        enum: ["pending", "approved", "rejected"],
+        default: "pending",
+        index: true,
+      },
+      utrNumber: { type: String, default: null },
+      description: { type: String, default: null },
+      reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      reviewedByName: { type: String, default: null },
+      reviewedByRole: { type: String, default: null },
+      reviewedAt: { type: Date, default: null },
+      remarks: { type: String, default: null },
+    },
+
+    emiDocuments: {
+      aadhaarFront: { type: String, default: null },
+      aadhaarBack: { type: String, default: null },
+      panCard: { type: String, default: null },
+      otherDocuments: [
+        {
+          url: { type: String },
+          name: { type: String },
+        },
+      ],
+      status: {
+        type: String,
+        enum: ["pending", "verified", "rejected"],
+        default: "pending",
+      },
+      uploadedAt: { type: Date, default: null },
+    },
 
     meta: Schema.Types.Mixed,
     inventoryStatus: {

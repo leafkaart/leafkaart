@@ -1,5 +1,6 @@
 const Product = require("../../models/Product");
 const slugify = require("slugify");
+const { isAdminOrEmployee } = require("../../utils/productActivity");
 
 const validateProductFields = (data) => {
   const errors = [];
@@ -91,7 +92,21 @@ exports.getById = async (req, res) => {
     if (!product)
       return res.status(404).json({ message: "Product not found" });
 
-    res.json({ success: true, product });
+    const productData = product.toObject();
+
+    if (!isAdminOrEmployee(req.user)) {
+      delete productData.activityLog;
+      delete productData.createdById;
+      delete productData.createdByName;
+      delete productData.createdByRole;
+      delete productData.lastModifiedById;
+      delete productData.lastModifiedByName;
+      delete productData.lastModifiedByRole;
+      delete productData.lastModifiedAt;
+      delete productData.lastAction;
+    }
+
+    res.json({ success: true, product: productData });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -4,6 +4,7 @@ const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
 const Address = require("../../models/Address");
 const { uploadImageToCloudinary } = require("../../utils/imageUploader");
+const { appendOrderActivity } = require("../../utils/orderActivity");
 const {
   getUserIdsByRoles,
   createAndSendNotifications,
@@ -69,11 +70,16 @@ exports.createOrder = async (req, res) => {
     let addharFrontImageUrl = null;
     let aadharBackImageUrl = null;
     let panCardImageUrl = null;
+    let otherDocuments = [];
 
     if (paymentMethod === "EMI") {
       const frontImage = req.files?.addharfrontimage || req.files?.aadhaarImage;
       const backImage = req.files?.aadharbackimage;
       const panCardImage = req.files?.pancardimage || req.files?.panImage;
+      const rawOtherDocs =
+        req.files?.otherDocuments ||
+        req.files?.otherDocument ||
+        req.files?.otherDocs;
 
       if (!frontImage || !backImage || !panCardImage) {
         return res.status(400).json({
@@ -117,6 +123,25 @@ exports.createOrder = async (req, res) => {
       addharFrontImageUrl = addharFrontUpload.secure_url;
       aadharBackImageUrl = aadharBackUpload.secure_url;
       panCardImageUrl = panCardUpload.secure_url;
+
+      if (rawOtherDocs) {
+        const docs = Array.isArray(rawOtherDocs) ? rawOtherDocs : [rawOtherDocs];
+        for (const doc of docs) {
+          const upload = await uploadImageToCloudinary(
+            doc,
+            "emi-documents",
+            1200,
+            1200
+          );
+
+          if (upload?.secure_url) {
+            otherDocuments.push({
+              url: upload.secure_url,
+              name: doc.name || doc.originalFilename || "Other document",
+            });
+          }
+        }
+      }
     }
 
     if (req.files && req.files.paymentImage) {
@@ -242,15 +267,52 @@ exports.createOrder = async (req, res) => {
       addharfrontimage: paymentMethod === "EMI" ? addharFrontImageUrl : null,
       aadharbackimage: paymentMethod === "EMI" ? aadharBackImageUrl : null,
       pancardimage: paymentMethod === "EMI" ? panCardImageUrl : null,
+      emiDocuments:
+        paymentMethod === "EMI"
+          ? {
+              aadhaarFront: addharFrontImageUrl,
+              aadhaarBack: aadharBackImageUrl,
+              panCard: panCardImageUrl,
+              otherDocuments,
+              status: "pending",
+              uploadedAt: new Date(),
+            }
+          : {
+              status: "pending",
+              otherDocuments: [],
+              uploadedAt: null,
+            },
       paymentStatus: paymentStatus === 'true' || paymentStatus === true,
-      timeline: [
-        {
-          status: "order_placed",
-          notes: "Order created",
-          changedBy: req.user._id,
-        },
-      ],
+      paymentReview: {
+        status: "pending",
+      },
+      timeline: [],
     });
+
+    appendOrderActivity(order, {
+      action: "Order Created",
+      remarks: "Order created by customer",
+      actor: req.user,
+      status: "order_placed",
+    });
+
+    if (
+      paymentImageUrl ||
+      (paymentMethod === "EMI" &&
+        (addharFrontImageUrl || aadharBackImageUrl || panCardImageUrl))
+    ) {
+      appendOrderActivity(order, {
+        action: "Payment Submitted",
+        remarks:
+          paymentMethod === "EMI"
+            ? "EMI documents submitted by customer"
+            : "Payment proof submitted by customer",
+        actor: req.user,
+        status: order.status,
+      });
+    }
+
+    await order.save();
 
     // --- CLEAR CART ---
     await Cart.findOneAndUpdate(
@@ -423,15 +485,16 @@ exports.requestReturnOrder = async (req, res) => {
       requestedAt: new Date(),
     };
 
-    order.timeline.push({
-      status:
+    appendOrderActivity(order, {
+      action:
         type === "return"
-          ? "return_requested"
-          : type === "replace"
-          ? "replace_requested"
-          : "cancel_requested",
-      notes: reason,
-      changedBy: req.user._id,
+          ? "Return Requested"
+        : type === "replace"
+          ? "Replacement Requested"
+          : "Cancel Requested",
+      remarks: reason || "Customer submitted a request",
+      actor: req.user,
+      status: order.status,
     });
 
     await order.save();

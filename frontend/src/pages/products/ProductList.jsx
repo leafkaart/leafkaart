@@ -17,7 +17,6 @@ import {
   Search,
   CheckCircle,
   XCircle,
-  Eye,
 } from "lucide-react";
 import AddProductPage from "./AddProductPage";
 import { useNavigate } from "react-router-dom";
@@ -76,6 +75,23 @@ function ProductList() {
   const handleCategoryChange = (categoryId) => {
     setSelectedCategory(categoryId);
     setSelectedSubCategory("");
+  };
+
+  const formatCurrency = (value) => {
+    const amount = Number(value ?? 0);
+    return `₹${amount.toLocaleString("en-IN")}`;
+  };
+
+  const getFinalSellingPrice = (product) => {
+    if (product?.customerPrice != null) {
+      return product.customerPrice;
+    }
+
+    if (product?.finalSellingPrice != null) {
+      return product.finalSellingPrice;
+    }
+
+    return product?.dealerPrice ?? 0;
   };
 
   const handleApprove = async (productId) => {
@@ -225,7 +241,7 @@ function ProductList() {
                       SKU
                     </th> */}
                     <th className="py-3 px-4 font-medium text-gray-600 text-sm">
-                      Price
+                      Final Selling Price
                     </th>
                     <th className="py-3 px-4 font-medium text-gray-600 text-sm">
                       Stock
@@ -278,21 +294,21 @@ function ProductList() {
                     sortedProducts.map((product) => (
                       <tr
                         key={product._id || product.id}
-                        className="border-t border-gray-50 hover:bg-gray-200 transition"
+                        className="border-t border-gray-50 hover:bg-gray-100 transition"
                       >
                         {/* Product Info */}
-                        <td className="py-4 px-4">
+                        <td className="py-3 px-4">
                           <div
                             className="flex items-center gap-3 cursor-pointer"
                             onClick={() => {
                               navigate(`${product._id || product.id}`);
                             }}
                           >
-                            <div className="min-w-12 min-h-12 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                            <div className="min-w-11 min-h-11 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden">
                               <img
                                 src={product.images?.[0]?.url}
                                 alt={product.title}
-                                className="min-w-10 min-h-10 max-w-20 max-h-10 object-cover rounded-lg"
+                                className="w-10 h-10 object-cover rounded-lg"
                               />
                             </div>
                             <div>
@@ -307,7 +323,7 @@ function ProductList() {
                         </td>
 
                         {/* Category */}
-                        <td className="py-4 px-4">
+                        <td className="py-3 px-4">
                           <div className="text-sm text-gray-600">
                             <p className="font-medium">
                               {product?.categoryId?.name || product.categoryId}
@@ -320,7 +336,7 @@ function ProductList() {
                         </td>
 
                         {!isDealer && (
-                          <td className="py-4 px-4">
+                          <td className="py-3 px-4">
                             <span className="text-sm text-gray-600">
                               {product?.dealerId?.name || product.dealerId}
                             </span>
@@ -335,14 +351,17 @@ function ProductList() {
                         </td> */}
 
                         {/* Price */}
-                        <td className="py-4 px-4">
-                          <span className="text-sm font-semibold text-gray-800">
-                            ₹{product.dealerPrice}
+                        <td className="py-3 px-4">
+                          <span
+                            className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-gray-900 whitespace-nowrap"
+                            title="Final Selling Price"
+                          >
+                            {formatCurrency(getFinalSellingPrice(product))}
                           </span>
                         </td>
 
                         {/* Stock */}
-                        <td className="py-4 px-4">
+                        <td className="py-3 px-4">
                           <span
                             className={`text-sm ${
                               product.stock > 0
@@ -355,13 +374,13 @@ function ProductList() {
                               : "Out of stock"}
                           </span>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-3 px-4">
                           {product.isApproved === true ? "Approved" : "Pending"}
                         </td>
 
                         {/* Actions - Only for Admin */}
                         {!isDealer && (
-                          <td className="py-4 px-4">
+                          <td className="py-3 px-4">
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() =>

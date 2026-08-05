@@ -1,30 +1,17 @@
 import { useState } from "react";
-import {
-  useGetOrdersQuery,
-  useGetOrderQuery,
-} from "../../store/api/ordersApi";
+import { useGetOrdersQuery } from "../../store/api/ordersApi";
 import {
   ChevronDown,
   Filter,
   Package,
   Search,
-  Eye,
-  Calendar,
-  DollarSign,
-  User,
-  MapPin,
-  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 function OrderList() {
   const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [showOrderModal, setShowOrderModal] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const isDealer = user?.role === "dealer";
   const navigate = useNavigate();
 
   // RTK Query hooks
@@ -60,8 +47,14 @@ function OrderList() {
 
   const statusOptions = [
     { value: "", label: "All Status" },
+    { value: "pending", label: "Pending" },
+    { value: "confirmed", label: "Confirmed" },
+    { value: "assigned", label: "Assigned" },
+    { value: "payment_approved", label: "Payment Approved" },
     { value: "order_placed", label: "Order Placed" },
     { value: "processing", label: "Processing" },
+    { value: "dispatched", label: "Dispatched" },
+    { value: "in_transit", label: "In Transit" },
     { value: "packed", label: "Packed" },
     { value: "ready_for_dispatch", label: "Ready for Dispatch" },
     { value: "shipped", label: "Shipped" },
@@ -69,6 +62,7 @@ function OrderList() {
     { value: "delivered", label: "Delivered" },
     { value: "cancelled", label: "Cancelled" },
     { value: "returned", label: "Returned" },
+    { value: "refunded", label: "Refunded" },
     { value: "return_requested", label: "Return Requested" },
     { value: "replace_requested", label: "Replacement Requested" },
     { value: "cancel_requested", label: "Cancellation Requested" },
@@ -77,7 +71,13 @@ function OrderList() {
   const getStatusColor = (status) => {
     const colors = {
       order_placed: "bg-blue-100 text-blue-700",
+      pending: "bg-slate-100 text-slate-700",
+      confirmed: "bg-sky-100 text-sky-700",
+      assigned: "bg-amber-100 text-amber-700",
+      payment_approved: "bg-emerald-100 text-emerald-700",
       processing: "bg-yellow-100 text-yellow-700",
+      dispatched: "bg-indigo-100 text-indigo-700",
+      in_transit: "bg-cyan-100 text-cyan-700",
       packed: "bg-purple-100 text-purple-700",
       ready_for_dispatch: "bg-indigo-100 text-indigo-700",
       shipped: "bg-cyan-100 text-cyan-700",
@@ -85,6 +85,7 @@ function OrderList() {
       delivered: "bg-green-100 text-green-700",
       cancelled: "bg-red-100 text-red-700",
       returned: "bg-gray-100 text-gray-700",
+      refunded: "bg-emerald-100 text-emerald-700",
       return_requested: "bg-orange-100 text-orange-700",
       replace_requested: "bg-orange-100 text-orange-700",
       cancel_requested: "bg-orange-100 text-orange-700",
@@ -269,15 +270,24 @@ function OrderList() {
 
                       {/* Payment Status */}
                       <td className="py-4 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                            order.isPaid
-                              ? "bg-green-100 text-green-700"
-                              : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {order.isPaid ? "Paid" : "Pending"}
-                        </span>
+                        <div className="space-y-1">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              order.isPaid
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {order.isPaid ? "Paid" : "Pending"}
+                          </span>
+                          <p className="text-[11px] text-gray-500">
+                            {order.paymentReview?.status === "approved"
+                              ? `Approved by ${order.paymentReview.reviewedByName || "N/A"}`
+                              : order.paymentReview?.status === "rejected"
+                              ? `Rejected by ${order.paymentReview.reviewedByName || "N/A"}`
+                              : "Awaiting review"}
+                          </p>
+                        </div>
                       </td>
 
                       {/* Order Status */}

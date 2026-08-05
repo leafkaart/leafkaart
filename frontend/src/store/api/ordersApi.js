@@ -52,15 +52,15 @@ export const ordersApi = createApi({
         method: "PATCH",
         body: { status },
       }),
-      invalidatesTags: ["Order"],
+      invalidatesTags: ["Orders"],
     }),
     updatePaymentStatus: builder.mutation({
-      query: ({ orderId, paymentStatus }) => ({
+      query: ({ orderId, action, utrNumber, description, remarks }) => ({
         url: `admin/orders/updatePaymentStatus/${orderId}`,
         method: "PATCH",
-        body: { paymentStatus },
+        body: { action, utrNumber, description, remarks },
       }),
-      invalidatesTags: ["Order"],
+      invalidatesTags: ["Orders"],
     }),
     getDealersByPincode: builder.query({
       query: (pinCode) => `/admin/products/dealers-by-pincode/${pinCode}`,

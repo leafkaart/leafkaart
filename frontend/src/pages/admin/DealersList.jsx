@@ -571,7 +571,7 @@ const DealersList = () => {
               {/* Modal Body */}
               <div className="p-5 space-y-5">
                 {/* Role Selection */}
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Role
                   </label>
@@ -597,10 +597,10 @@ const DealersList = () => {
                       );
                     })}
                   </div>
-                </div>
+                </div> */}
 
                 {/* Personal Information Section */}
-                <div className="border-t pt-4">
+                <div className="">
                   <h3 className="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
                     <User className="w-4 h-4" />
                     Personal Information

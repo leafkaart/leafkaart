@@ -3,6 +3,32 @@ const {
   getUserIdsByRoles,
   createAndSendNotifications,
 } = require("../../utils/notificationHelper");
+const { appendOrderActivity } = require("../../utils/orderActivity");
+
+const STATUS_LABELS = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  assigned: "Assigned",
+  payment_approved: "Payment Approved",
+  processing: "Processing",
+  dispatched: "Dispatched",
+  in_transit: "In Transit",
+  packed: "Packed",
+  ready_for_dispatch: "Ready for Dispatch",
+  shipped: "Shipped",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+  returned: "Returned",
+  refunded: "Refunded",
+};
+
+const getStatusLabel = (status) =>
+  STATUS_LABELS[status] ||
+  String(status || "")
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 
 // Dealer assigned orders
 exports.assignedOrders = async (req, res) => {
@@ -41,10 +67,11 @@ exports.updateStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found" });
 
     order.status = req.body.status;
-    order.timeline.push({
+    appendOrderActivity(order, {
+      action: getStatusLabel(req.body.status),
+      remarks: `Status updated to ${req.body.status}`,
+      actor: req.user,
       status: req.body.status,
-      changedBy: req.user._id,
-      at: new Date(),
     });
 
     await order.save();

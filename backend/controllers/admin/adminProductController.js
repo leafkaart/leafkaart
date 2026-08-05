@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../../models/User')
 const Product = require('../../models/Product');
+const { appendProductActivity } = require("../../utils/productActivity");
 const {
   getUserIdsByRoles,
   createAndSendNotifications,
@@ -58,10 +59,30 @@ exports.approveProduct = async (req, res) => {
       });
     }
 
+    const previousApproved = Boolean(product.isApproved);
+    const previousActive = Boolean(product.isActive);
     product.isApproved = true;
     product.approvedAt = new Date();
     product.approvedBy = req.user._id;
     product.isActive = true;
+
+    appendProductActivity(product, {
+      action: "Product Approved",
+      actor: req.user,
+      previousValue: previousApproved,
+      newValue: true,
+      remarks: "Product approved by admin",
+    });
+
+    if (!previousActive) {
+      appendProductActivity(product, {
+        action: "Product Activated",
+        actor: req.user,
+        previousValue: previousActive,
+        newValue: true,
+        remarks: "Product activated after approval",
+      });
+    }
 
     await product.save();
 
@@ -115,10 +136,30 @@ exports.rejectProduct = async (req, res) => {
       });
     }
 
+    const previousApproved = Boolean(product.isApproved);
+    const previousActive = Boolean(product.isActive);
     product.isApproved = false;
     product.isActive = false;
     product.rejectedAt = new Date();
     product.rejectedBy = req.user._id;
+
+    appendProductActivity(product, {
+      action: "Product Rejected",
+      actor: req.user,
+      previousValue: previousApproved,
+      newValue: false,
+      remarks: "Product rejected by admin",
+    });
+
+    if (previousActive) {
+      appendProductActivity(product, {
+        action: "Product Deactivated",
+        actor: req.user,
+        previousValue: previousActive,
+        newValue: false,
+        remarks: "Product deactivated after rejection",
+      });
+    }
 
     await product.save();
 

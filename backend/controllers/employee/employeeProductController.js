@@ -1,4 +1,5 @@
 const Product = require('../../models/Product');
+const { appendProductActivity } = require("../../utils/productActivity");
 
 // CREATE PRODUCT
 exports.createProduct = async (req, res) => {
@@ -74,31 +75,36 @@ exports.getProduct = async (req, res) => {
 // UPDATE PRODUCT
 exports.updateProduct = async (req, res) => {
   try {
-    // Prevent slug overwrite to another product
-    if (req.body.slug) {
-      const slugExists = await Product.findOne({ 
-        slug: req.body.slug,
-        _id: { $ne: req.params.id }
-      });
-      if (slugExists) {
-        return res.status(400).json({
-          success: false,
-          message: "Slug already used by another product"
-        });
-      }
-    }
-
-    const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, employee: req.user._id },
-      req.body,
-      { new: true }
-    );
+    const product = await Product.findOne({ _id: req.params.id });
 
     if (!product) {
       return res.status(404).json({
         success: false,
         message: "Product not found"
       });
+    }
+
+    const previousSnapshot = product.toObject();
+
+    Object.entries(req.body || {}).forEach(([key, value]) => {
+      if (key === "slug") return;
+      product[key] = value;
+    });
+
+    const changedFields = Object.entries(req.body || {}).filter(([key, value]) => {
+      if (key === "slug") return false;
+      return String(previousSnapshot[key] ?? "") !== String(value ?? "");
+    });
+
+    if (changedFields.length) {
+      appendProductActivity(product, {
+        action: "Product Updated",
+        actor: req.user,
+        previousValue: Object.fromEntries(changedFields.map(([key]) => [key, previousSnapshot[key]])),
+        newValue: Object.fromEntries(changedFields.map(([key, value]) => [key, value])),
+        remarks: `Updated ${changedFields.map(([key]) => key).join(", ")}`,
+      });
+      await product.save();
     }
 
     res.json({ success: true, product });
@@ -120,17 +126,7 @@ exports.updateCommission = async (req, res) => {
       });
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      {
-        commission: Number(commission),
-        customerPrice: Number(customerPrice),
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const updatedProduct = await Product.findById(id);
 
     if (!updatedProduct) {
       return res.status(404).json({
@@ -138,6 +134,41 @@ exports.updateCommission = async (req, res) => {
         message: "Product not found",
       });
     }
+
+    const previousCommission = Number(updatedProduct.commission || 0);
+    const previousCustomerPrice = Number(updatedProduct.customerPrice || 0);
+    const previousDealerPrice = Number(updatedProduct.dealerPrice || 0);
+    const nextCommission = Number(commission);
+    const nextCustomerPrice = Number(customerPrice);
+
+    updatedProduct.commission = nextCommission;
+    updatedProduct.customerPrice = nextCustomerPrice;
+
+    appendProductActivity(updatedProduct, {
+      action: "Commission Updated",
+      actor: req.user,
+      previousValue: previousCommission,
+      newValue: nextCommission,
+      remarks: "Commission updated by employee",
+    });
+
+    appendProductActivity(updatedProduct, {
+      action: "Customer Price Updated",
+      actor: req.user,
+      previousValue: previousCustomerPrice,
+      newValue: nextCustomerPrice,
+      remarks: "Customer price updated with commission change",
+    });
+
+    appendProductActivity(updatedProduct, {
+      action: "Margin Updated",
+      actor: req.user,
+      previousValue: previousCustomerPrice - previousDealerPrice,
+      newValue: nextCustomerPrice - previousDealerPrice,
+      remarks: "Margin updated after commission change",
+    });
+
+    await updatedProduct.save();
 
     return res.status(200).json({
       success: true,

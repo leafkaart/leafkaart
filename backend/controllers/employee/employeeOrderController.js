@@ -1,16 +1,49 @@
 const Order = require("../../models/Order");
 const { syncOrderInventory } = require("../../utils/orderInventory");
+const { appendOrderActivity } = require("../../utils/orderActivity");
+
+const STATUS_LABELS = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  assigned: "Assigned",
+  payment_approved: "Payment Approved",
+  processing: "Processing",
+  dispatched: "Dispatched",
+  in_transit: "In Transit",
+  packed: "Packed",
+  ready_for_dispatch: "Ready for Dispatch",
+  shipped: "Shipped",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+  returned: "Returned",
+  refunded: "Refunded",
+};
+
+const getStatusLabel = (status) =>
+  STATUS_LABELS[status] ||
+  String(status || "")
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 
 // Allowed order status flow for employees
 const ALLOWED_STATUS = [
+  "pending",
+  "confirmed",
+  "assigned",
+  "payment_approved",
   "processing",
+  "dispatched",
+  "in_transit",
   "packed",
   "ready_for_dispatch",
   "shipped",
   "out_for_delivery",
   "delivered",
   "cancelled",
-  "returned"
+  "returned",
+  "refunded",
 ];
 
 // LIST ASSIGNED ORDERS
@@ -61,12 +94,12 @@ exports.updateStatus = async (req, res) => {
     order.status = status;
     await syncOrderInventory(order, status);
 
-    // Add timeline entry
-    order.timeline.push({
+    // Add audit entry
+    appendOrderActivity(order, {
+      action: getStatusLabel(status),
+      remarks: notes || `Status updated to ${status}`,
+      actor: req.user,
       status,
-      notes: notes || "",
-      changedBy: req.user._id,
-      at: new Date()
     });
 
     await order.save();

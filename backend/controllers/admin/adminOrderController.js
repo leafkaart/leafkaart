@@ -4,10 +4,17 @@ const { sendEmail } = require("../../utils/emailService");
 const dealerTemplate = require("../../utils/dealerAssignedTemplate");
 const customerTemplate = require("../../utils/customerAssignedTemplate");
 const { syncOrderInventory } = require("../../utils/orderInventory");
+const { appendOrderActivity } = require("../../utils/orderActivity");
 
 const ALLOWED_STATUSES = [
+  "pending",
+  "confirmed",
+  "assigned",
+  "payment_approved",
   "order_placed",
   "processing",
+  "dispatched",
+  "in_transit",
   "packed",
   "ready_for_dispatch",
   "shipped",
@@ -15,7 +22,34 @@ const ALLOWED_STATUSES = [
   "delivered",
   "cancelled",
   "returned",
+  "refunded",
 ];
+
+const STATUS_LABELS = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  assigned: "Assigned",
+  payment_approved: "Payment Approved",
+  order_placed: "Order Created",
+  processing: "Processing",
+  dispatched: "Dispatched",
+  in_transit: "In Transit",
+  packed: "Packed",
+  ready_for_dispatch: "Ready for Dispatch",
+  shipped: "Shipment Updated",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+  returned: "Returned",
+  refunded: "Refunded",
+};
+
+const getStatusLabel = (status) =>
+  STATUS_LABELS[status] ||
+  String(status || "")
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 
 exports.listOrders = async (req, res) => {
   try {
@@ -45,7 +79,10 @@ exports.listOrders = async (req, res) => {
         .populate("user", "name email phone")
         .populate("address", "line1 line2 city state zip")
         .populate("dealerAssign.dealer", "name email")
-        .populate("timeline.changedBy", "name email"),
+        .populate("timeline.changedBy", "name email")
+        .populate("timeline.performedById", "name email role")
+        .populate("latestAction.performedById", "name email role")
+        .populate("paymentReview.reviewedBy", "name email role"),
 
       Order.countDocuments(filter),
     ]);
@@ -81,7 +118,11 @@ exports.getOrder = async (req, res) => {
       .populate("address")
       .populate("items.product", "title slug sku price images")
       .populate("dealerAssign.dealer", "name email")
-      .populate("dealerAssign.assignedBy", "name email");
+      .populate("dealerAssign.assignedBy", "name email")
+      .populate("timeline.changedBy", "name email")
+      .populate("timeline.performedById", "name email role")
+      .populate("latestAction.performedById", "name email role")
+      .populate("paymentReview.reviewedBy", "name email role");
 
     if (!order) {
       return res.status(404).json({
@@ -133,10 +174,11 @@ exports.updateOrderStatus = async (req, res) => {
     order.status = status;
     await syncOrderInventory(order, status);
 
-    order.timeline.push({
+    appendOrderActivity(order, {
+      action: getStatusLabel(status),
+      remarks: `Status updated to ${getStatusLabel(status)}`,
+      actor: req.user,
       status,
-      changedBy: req.user?._id || null,
-      at: new Date(),
     });
 
     await order.save();
@@ -147,7 +189,9 @@ exports.updateOrderStatus = async (req, res) => {
       .populate("items.product", "title slug sku price")
       .populate("dealerAssign.dealer", "name email")
       .populate("dealerAssign.assignedBy", "name email")
-      .populate("timeline.changedBy", "name email");
+      .populate("timeline.changedBy", "name email")
+      .populate("timeline.performedById", "name email role")
+      .populate("latestAction.performedById", "name email role");
 
     return res.status(200).json({
       success: true,
@@ -166,7 +210,15 @@ exports.updateOrderStatus = async (req, res) => {
 exports.updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { paymentStatus, paymentMethod, paymentImage } = req.body;
+    const {
+      action,
+      paymentStatus,
+      paymentMethod,
+      paymentImage,
+      utrNumber,
+      description,
+      remarks,
+    } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -175,10 +227,28 @@ exports.updatePaymentStatus = async (req, res) => {
       });
     }
 
-    if (typeof paymentStatus !== "boolean") {
+    const normalizedAction =
+      action ||
+      (typeof paymentStatus === "boolean"
+        ? paymentStatus
+          ? "approve"
+          : "reject"
+        : null);
+
+    if (!["approve", "reject"].includes(normalizedAction)) {
       return res.status(400).json({
         success: false,
-        message: "paymentStatus must be boolean",
+        message: "Payment action must be approve or reject",
+      });
+    }
+
+    if (
+      normalizedAction === "approve" &&
+      (!utrNumber || !String(utrNumber).trim() || !description || !String(description).trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "UTR number and description are required to approve payment",
       });
     }
 
@@ -190,16 +260,37 @@ exports.updatePaymentStatus = async (req, res) => {
       });
     }
 
-    order.paymentStatus = paymentStatus;
-    order.isPaid = paymentStatus;
+    const isApproved = normalizedAction === "approve";
+
+    order.paymentStatus = isApproved;
+    order.isPaid = isApproved;
+    if (isApproved) {
+      order.status = "payment_approved";
+    }
 
     if (paymentMethod) order.paymentMethod = paymentMethod;
     if (paymentImage) order.paymentImage = paymentImage;
 
-    order.timeline.push({
+    order.paymentReview = {
+      status: isApproved ? "approved" : "rejected",
+      utrNumber: isApproved ? String(utrNumber).trim() : null,
+      description: isApproved ? String(description).trim() : description || null,
+      reviewedBy: req.user?._id || null,
+      reviewedByName: req.user?.name || "System",
+      reviewedByRole: req.user?.role || "system",
+      reviewedAt: new Date(),
+      remarks: remarks || (isApproved ? "Payment approved" : "Payment rejected"),
+    };
+
+    appendOrderActivity(order, {
+      action: isApproved ? "Payment Approved" : "Payment Rejected",
+      remarks:
+        remarks ||
+        (isApproved
+          ? `Payment approved with UTR ${String(utrNumber).trim()}`
+          : "Payment rejected"),
+      actor: req.user,
       status: order.status,
-      changedBy: req.user?._id || null,
-      at: new Date(),
     });
 
     await order.save();
@@ -210,11 +301,16 @@ exports.updatePaymentStatus = async (req, res) => {
       .populate("items.product", "title slug sku price")
       .populate("dealerAssign.dealer", "name email")
       .populate("dealerAssign.assignedBy", "name email")
-      .populate("timeline.changedBy", "name email");
+      .populate("timeline.changedBy", "name email")
+      .populate("timeline.performedById", "name email role")
+      .populate("latestAction.performedById", "name email role")
+      .populate("paymentReview.reviewedBy", "name email role");
 
     return res.status(200).json({
       success: true,
-      message: "Payment status updated successfully",
+      message: isApproved
+        ? "Payment approved successfully"
+        : "Payment rejected successfully",
       data: updatedOrder,
     });
   } catch (err) {
@@ -266,7 +362,13 @@ exports.assignOrderToDealer = async (req, res) => {
       notes,
     };
 
-    order.status = "processing";
+    order.status = "assigned";
+    appendOrderActivity(order, {
+      action: "Dealer Assigned",
+      remarks: notes || "Order assigned to dealer",
+      actor: req.user,
+      status: order.status,
+    });
 
     await order.save();
 
@@ -336,7 +438,13 @@ exports.unassignOrderToDealer = async (req, res) => {
       });
     }
     order.dealerAssign = null;
-    order.status = "order_placed";
+    order.status = "pending";
+    appendOrderActivity(order, {
+      action: "Dealer Unassigned",
+      remarks: "Dealer assignment removed",
+      actor: req.user,
+      status: order.status,
+    });
     await order.save();
     return res.json({
       success: true,
@@ -396,7 +504,7 @@ exports.handleReturnRequest = async (req, res) => {
 
       // 🔁 RETURN FLOW
       if (requestType === "return") {
-        order.status = "returned";
+        order.status = "refunded";
         await syncOrderInventory(order, order.status);
       }
 
@@ -425,21 +533,24 @@ exports.handleReturnRequest = async (req, res) => {
     }
 
     // ✅ Timeline update
-    order.timeline.push({
-      status:
-        status === "approved"
-          ? requestType === "return"
-            ? "return_approved"
-            : requestType === "cancel"
-            ? "cancel_approved"
-            : "replace_approved"
+    const actionPerformed =
+      status === "approved"
+        ? requestType === "cancel"
+          ? "Cancel Approved"
           : requestType === "return"
-          ? "return_rejected"
-          : requestType === "cancel"
-          ? "cancel_rejected"
-          : "replace_rejected",
-      notes: message,
-      changedBy: req.user._id,
+          ? "Refund Approved"
+          : "Approve Replacement"
+        : requestType === "cancel"
+        ? "Cancel Rejected"
+        : requestType === "return"
+        ? "Refund Rejected"
+        : "Reject Replacement";
+
+    appendOrderActivity(order, {
+      action: actionPerformed,
+      remarks: message || `${requestType} request ${status}`,
+      actor: req.user,
+      status: order.status,
     });
 
     await order.save();
