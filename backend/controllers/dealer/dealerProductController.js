@@ -286,16 +286,51 @@ exports.updateProduct = async (req, res) => {
         .json({ success: false, message: "Product not found" });
     }
 
+    if (product.dealerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You are not authorized to modify this product' });
+    }
+
     const updates = buildProductSavedPayload(product, { ...req.body });
 
     let uploadedImages = [];
     const activityEntries = [];
     const previousImages = mapImageUrls(product.images || []);
 
-    // If images exist
+    // New image files (appended after any kept existing images)
     const images = getUploadedImages(req);
-    if (images.length) {
-      if (images.length > 6)
+
+    // Existing images to keep, and in what order — omit an id to delete it,
+    // reorder the array to reorder the gallery. Falls back to "keep everything
+    // as-is" when the caller doesn't send this field, preserving old behavior.
+    let keptExistingImages = product.images || [];
+    const imagesTouched = req.body.existingImages !== undefined || images.length > 0;
+
+    if (req.body.existingImages !== undefined) {
+      let keepIds;
+      try {
+        keepIds = JSON.parse(req.body.existingImages);
+      } catch (err) {
+        keepIds = null;
+      }
+      if (!Array.isArray(keepIds)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid existingImages payload" });
+      }
+      const byId = new Map(
+        (product.images || []).map((image) => [String(image._id), image])
+      );
+      keptExistingImages = keepIds.map((id) => byId.get(String(id))).filter(Boolean);
+    }
+
+    if (imagesTouched) {
+      const totalCount = keptExistingImages.length + images.length;
+      if (totalCount === 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Please keep or upload at least one image" });
+      }
+      if (totalCount > 6)
         return res
           .status(400)
           .json({ success: false, message: "Max 6 images allowed" });
@@ -316,11 +351,14 @@ exports.updateProduct = async (req, res) => {
         uploadedImages.push({
           url: upload.secure_url,
           alt: updates.title || product.title || "Product image",
-          order: uploadedImages.length + 1,
         });
       }
 
-      updates.images = normalizeImages(uploadedImages, updates.title || product.title);
+      const mergedImages = [
+        ...keptExistingImages.map((image) => ({ url: image.url, alt: image.alt })),
+        ...uploadedImages,
+      ];
+      updates.images = normalizeImages(mergedImages, updates.title || product.title);
     }
 
     const originalDealerPrice = parseNumber(product.dealerPrice, 0);

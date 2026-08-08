@@ -268,11 +268,17 @@ const CategoryManagement = () => {
   const confirmDelete = async () => {
     setIsLoading(true);
     try {
+      const authHeaders = {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      };
       if (deleteType === "category") {
         await axios.delete(
           `${
             import.meta.env.VITE_BACKEND_URL
-          }/admin/categories/deleteCategory/${deleteTarget}`
+          }/admin/categories/deleteCategory/${deleteTarget}`,
+          authHeaders
         );
         showToastMessage("Category deleted successfully!", "success");
         refetchCategories(); // Add this line
@@ -281,7 +287,8 @@ const CategoryManagement = () => {
         await axios.delete(
           `${
             import.meta.env.VITE_BACKEND_URL
-          }/admin/subCategories/deleteSubCategory/${deleteTarget}`
+          }/admin/subCategories/deleteSubCategory/${deleteTarget}`,
+          authHeaders
         );
         showToastMessage("Subcategory deleted successfully!", "success");
         refetchSubcategories(); // Add this line

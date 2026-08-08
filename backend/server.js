@@ -8,6 +8,7 @@ const fileUpload = require("express-fileupload");
 const database = require("./config/database");
 const { cloudinaryConnect } = require("./config/cloudinary");
 const { initSocket } = require("./socket");
+const { errorHandler } = require("./middlewares/errorHandler");
 
 dotenv.config();
 
@@ -94,6 +95,7 @@ const reviewRoutes = require("./routes/customerRoutes/reviewRoutes");
 // COMMON
 const notificationRoutes = require("./routes/notificationRoutes");
 const bannerRoutes = require("./routes/adminRoutes/adminBannerRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 
 /* =========================
    ROUTE MAPPINGS
@@ -121,6 +123,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/banner", bannerRoutes);
+app.use("/api/payment", paymentRoutes);
 
 /* =========================
    DEFAULT ROUTE
@@ -128,6 +131,12 @@ app.use("/api/banner", bannerRoutes);
 app.get("/", (req, res) => {
   res.send("Welcome to Leaf E-Commerce App API 🚀");
 });
+
+/* =========================
+   404 & ERROR HANDLING
+========================= */
+app.use((req, res) => res.status(404).json({ message: "Route not found" }));
+app.use(errorHandler);
 
 /* =========================
    START SERVER

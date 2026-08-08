@@ -121,7 +121,12 @@ const CustomersList = () => {
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/auth/getAllCustomers`,
-        { method: "GET" }
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        }
       );
 
       const data = await res.json();

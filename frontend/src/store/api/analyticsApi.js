@@ -7,7 +7,9 @@ export const analyticsApi = createApi({
     baseUrl: `${import.meta.env.VITE_BACKEND_URL}/admin`,
     prepareHeaders: (headers, { getState }) => {
       const token = getState()?.auth?.token;
-     // console.log("TOKEN:", token);
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
       return headers;
     },
   }),

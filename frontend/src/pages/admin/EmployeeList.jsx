@@ -103,7 +103,10 @@ const EmployeeList = () => {
         `${import.meta.env.VITE_BACKEND_URL}/auth/employee-register`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
           body: JSON.stringify(formData),
         }
       );
@@ -133,7 +136,12 @@ const EmployeeList = () => {
     try {
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/auth/getAllEmployees`,
-        { method: "GET" }
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        }
       );
 
       const data = await res.json();
@@ -171,7 +179,10 @@ const EmployeeList = () => {
         `${import.meta.env.VITE_BACKEND_URL}/auth/updateEmployee/${emp._id}`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
           body: JSON.stringify({ isActive: !emp.isActive }),
         }
       );

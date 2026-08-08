@@ -25,3 +25,10 @@ exports.adminOrEmployee = (req, res, next) => {
     }
     return res.status(403).json({ message: 'Access denied' });
 };
+
+exports.adminEmployeeOrDealer = (req, res, next) => {
+    if (['admin', 'employee', 'dealer'].includes(req.user.role)) {
+        return next();
+    }
+    return res.status(403).json({ message: 'Access denied' });
+};

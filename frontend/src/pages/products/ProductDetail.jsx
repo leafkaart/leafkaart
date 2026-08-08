@@ -12,8 +12,6 @@ import {
   CheckCircle,
   XCircle,
   Save,
-  ShieldCheck,
-  CircleDot,
   Tag,
   Image as ImageIcon,
 } from "lucide-react";
@@ -97,64 +95,6 @@ const formatAuditValue = (value, action = "") => {
   return String(value);
 };
 
-const getActivityTone = (action = "") => {
-  const normalized = action.toLowerCase();
-
-  if (
-    normalized.includes("approved") ||
-    normalized.includes("activated") ||
-    normalized.includes("created")
-  ) {
-    return {
-      icon: <ShieldCheck className="h-4 w-4" />,
-      wrap: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    };
-  }
-
-  if (normalized.includes("rejected") || normalized.includes("deactivated")) {
-    return {
-      icon: <XCircle className="h-4 w-4" />,
-      wrap: "bg-red-50 text-red-700 border-red-200",
-    };
-  }
-
-  if (
-    normalized.includes("price") ||
-    normalized.includes("commission") ||
-    normalized.includes("margin")
-  ) {
-    return {
-      icon: <Tag className="h-4 w-4" />,
-      wrap: "bg-amber-50 text-amber-700 border-amber-200",
-    };
-  }
-
-  if (normalized.includes("image")) {
-    return {
-      icon: <ImageIcon className="h-4 w-4" />,
-      wrap: "bg-violet-50 text-violet-700 border-violet-200",
-    };
-  }
-
-  if (normalized.includes("stock")) {
-    return {
-      icon: <Package className="h-4 w-4" />,
-      wrap: "bg-sky-50 text-sky-700 border-sky-200",
-    };
-  }
-
-  return {
-    icon: <CircleDot className="h-4 w-4" />,
-    wrap: "bg-slate-50 text-slate-700 border-slate-200",
-  };
-};
-
-const formatActionLabel = (action = "") =>
-  String(action)
-    .replace(/_/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
 export default function ProductDetail() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -181,13 +121,15 @@ export default function ProductDetail() {
     refetch,
   } = useGetProductByIdQuery(productId);
   const canEdit =
-    !isDealer ||
-    product?.dealerId?._id === user._id ||
-    product?.dealerId === user._id;
+    isDealer &&
+    (product?.dealerId?._id === user._id || product?.dealerId === user._id);
   const [selectedImage, setSelectedImage] = useState(0);
   const [commission, setCommission] = useState(0);
   const [isEditingCommission, setIsEditingCommission] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [newImages, setNewImages] = useState([]);
+  const [newImagePreviews, setNewImagePreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
 
   const getPriceBreakdown = () => {
     const customerPrice = Number(product?.customerPrice ?? product?.dealerPrice ?? 0);
@@ -213,10 +155,8 @@ export default function ProductDetail() {
 
     if (userRole === "dealer") {
       return (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-1">
           <PriceTile label="Own Product Cost" value={`₹${price.dealerPrice.toLocaleString()}`} />
-          <PriceTile label="Own Margin" value={`₹${price.margin.toLocaleString()}`} tone="text-emerald-600" />
-          <PriceTile label="Customer Selling Price" value={`₹${price.customerPrice.toLocaleString()}`} />
         </div>
       );
     }
@@ -245,6 +185,7 @@ export default function ProductDetail() {
   useEffect(() => {
     if (product) {
       setCommission(product.commission || 0);
+      setExistingImages(product.images || []);
       setFormData({
         title: product.title || "",
         shortDescription: product.shortDescription || "",
@@ -254,22 +195,85 @@ export default function ProductDetail() {
         modelNumber: product.modelNumber || "",
         dealerPrice: product.dealerPrice || "",
         stock: product.stock || "",
-        categoryId: product.categoryId || "",
-        subCategoryId: product.subCategoryId || "",
+        categoryId: product.categoryId?._id || product.categoryId || "",
+        subCategoryId: product.subCategoryId?._id || product.subCategoryId || "",
       });
     }
   }, [product]);
 
   //console.log("Product Data:", product);
 
+  const clearNewImages = () => {
+    newImagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setNewImages([]);
+    setNewImagePreviews([]);
+  };
+
+  const handleImageSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+
+    const remainingSlots = Math.max(
+      0,
+      6 - existingImages.length - newImages.length
+    );
+    if (files.length > remainingSlots) {
+      addToast("You can upload maximum 6 images in total", "error");
+    }
+    const accepted = files.slice(0, remainingSlots);
+    if (!accepted.length) return;
+
+    const combined = [...newImages, ...accepted];
+    setNewImages(combined);
+    setNewImagePreviews((prev) => [
+      ...prev,
+      ...accepted.map((file) => URL.createObjectURL(file)),
+    ]);
+  };
+
+  const handleRemoveNewImage = (index) => {
+    URL.revokeObjectURL(newImagePreviews[index]);
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
+    setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveExistingImage = (index) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMoveExistingImage = (index, direction) => {
+    setExistingImages((prev) => {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  };
+
   const handleUpdateProduct = async () => {
     setIsSaving(true);
     try {
+      const payload = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          payload.append(key, value);
+        }
+      });
+
+      if (isDealer) {
+        payload.append(
+          "existingImages",
+          JSON.stringify(existingImages.map((image) => image._id))
+        );
+        newImages.forEach((file) => payload.append("images", file));
+      }
+
+      const endpointBase = isDealer ? "/dealer/products" : "/employee/products";
       const response = await axios.patch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/dealer/products/updateProduct/${productId}`,
-        formData,
+        `${import.meta.env.VITE_BACKEND_URL}${endpointBase}/updateProduct/${productId}`,
+        payload,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -279,6 +283,7 @@ export default function ProductDetail() {
 
       if (response.status === 200) {
         setIsEditMode(false);
+        clearNewImages();
         addToast("Product updated successfully!", "success");
         refetch();
       }
@@ -334,6 +339,11 @@ export default function ProductDetail() {
         {
           commission: parseFloat(commission),
           customerPrice: product.dealerPrice + parseFloat(commission),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
         }
       );
 
@@ -359,31 +369,17 @@ export default function ProductDetail() {
     const bTime = new Date(b?.createdAt || 0).getTime();
     return aTime - bTime;
   });
-  const firstActivity = activityItems[0];
-  const lastActivity = activityItems[activityItems.length - 1];
-  const createdByName =
-    product?.createdByName ||
-    product?.dealerId?.name ||
-    product?.employeeId?.name ||
-    firstActivity?.performedByName ||
-    "System";
-  const createdByRole =
-    product?.createdByRole ||
-    firstActivity?.performedByRole ||
-    (product?.dealerId?.name ? "Dealer" : "System");
-  const createdOn = formatDateTime(product?.createdAt);
-  const lastModifiedByName =
-    product?.lastModifiedByName ||
-    lastActivity?.performedByName ||
-    "System";
-  const lastModifiedByRole =
-    product?.lastModifiedByRole ||
-    lastActivity?.performedByRole ||
-    "System";
-  const lastModifiedOn = formatDateTime(
-    product?.lastModifiedAt || lastActivity?.createdAt || product?.updatedAt
+  const approvalActivity = [...activityItems]
+    .reverse()
+    .find((event) => event.action === "Product Approved");
+  const commissionActivities = activityItems.filter(
+    (event) => event.action === "Commission Updated"
   );
-  const lastAction = product?.lastAction || lastActivity?.action || "Product Created";
+  const commissionAddedActivity = commissionActivities[0];
+  const commissionChangedActivity =
+    commissionActivities.length > 1
+      ? commissionActivities[commissionActivities.length - 1]
+      : null;
 
   return (
     <>
@@ -421,6 +417,8 @@ export default function ProductDetail() {
                     <button
                       onClick={() => {
                         setIsEditMode(false);
+                        clearNewImages();
+                        setExistingImages(product.images || []);
                         setFormData({
                           title: product.title || "",
                           shortDescription: product.shortDescription || "",
@@ -470,25 +468,115 @@ export default function ProductDetail() {
               </div>
 
               {/* Thumbnail Images */}
-              {product.images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {product.images.map((image, index) => (
-                    <button
-                      key={image._id}
-                      onClick={() => setSelectedImage(index)}
-                      className={`flex-shrink-0 w-20 h-20 border-2 rounded-lg overflow-hidden transition-all ${
-                        selectedImage === index
-                          ? "border-blue-600"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <img
-                        src={image.url}
-                        alt={image.alt}
-                        className="w-full h-full object-cover"
+              {isEditMode && isDealer ? (
+                existingImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {existingImages.map((image, index) => (
+                      <div
+                        key={image._id || image.url}
+                        className="relative w-20 h-20"
+                      >
+                        <img
+                          src={image.url}
+                          alt={image.alt}
+                          className="w-full h-full object-cover rounded-lg border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingImage(index)}
+                          className="absolute -top-2 -right-2 bg-white rounded-full text-red-500 shadow"
+                        >
+                          <XCircle className="w-5 h-5" />
+                        </button>
+                        <div className="absolute inset-x-0 bottom-0 flex justify-between p-0.5">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => handleMoveExistingImage(index, -1)}
+                            className="rounded bg-white/90 px-1 text-xs font-bold text-gray-700 disabled:opacity-30"
+                          >
+                            ←
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === existingImages.length - 1}
+                            onClick={() => handleMoveExistingImage(index, 1)}
+                            className="rounded bg-white/90 px-1 text-xs font-bold text-gray-700 disabled:opacity-30"
+                          >
+                            →
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                product.images.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {product.images.map((image, index) => (
+                      <button
+                        key={image._id}
+                        onClick={() => setSelectedImage(index)}
+                        className={`flex-shrink-0 w-20 h-20 border-2 rounded-lg overflow-hidden transition-all ${
+                          selectedImage === index
+                            ? "border-blue-600"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <img
+                          src={image.url}
+                          alt={image.alt}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )
+              )}
+
+              {/* Edit Mode - Add Photos (dealer only) */}
+              {isEditMode && isDealer && (
+                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      Add Product Photos
+                    </p>
+                    <label className="cursor-pointer text-sm text-blue-700 font-semibold hover:text-blue-800 flex items-center">
+                      <ImageIcon className="w-4 h-4 mr-1" />
+                      Choose Photos
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleImageSelect}
                       />
-                    </button>
-                  ))}
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Remove or reorder photos above using the × and arrow
+                    buttons, and add new ones here (max 6 total).
+                  </p>
+                  {newImagePreviews.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {newImagePreviews.map((url, index) => (
+                        <div key={url} className="relative w-20 h-20">
+                          <img
+                            src={url}
+                            alt={`New upload ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNewImage(index)}
+                            className="absolute -top-2 -right-2 bg-white rounded-full text-red-500 shadow"
+                          >
+                            <XCircle className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -556,29 +644,59 @@ export default function ProductDetail() {
                 )}
               </div>
 
-              {isPrivilegedViewer && (
-                <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-amber-700">
-                        Product Activity Snapshot
-                      </p>
-                      <h3 className="mt-1 text-lg font-semibold text-gray-900">
-                        Last Modified Information
-                      </h3>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                      {formatActionLabel(lastAction)}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    <InfoTile label="Created By" value={createdByName} />
-                    <InfoTile label="Created On" value={createdOn.full} />
-                    <InfoTile label="Created Role" value={createdByRole} />
-                    <InfoTile label="Last Modified By" value={lastModifiedByName} />
-                    <InfoTile label="Last Modified On" value={lastModifiedOn.full} />
-                    <InfoTile label="Last Modified Role" value={lastModifiedByRole} />
+              {isPrivilegedViewer && (approvalActivity || commissionAddedActivity) && (
+                <div className="rounded-xl border bg-white p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Product Activity
+                  </p>
+                  <div className="space-y-1.5">
+                    {approvalActivity && (
+                      <div className="flex items-start gap-2 text-sm text-gray-700">
+                        <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        <span>
+                          Approved by{" "}
+                          <span className="font-medium text-gray-900">
+                            {approvalActivity.performedByName}
+                          </span>{" "}
+                          on {formatDateTime(approvalActivity.createdAt).full}
+                        </span>
+                      </div>
+                    )}
+                    {commissionAddedActivity && (
+                      <div className="flex items-start gap-2 text-sm text-gray-700">
+                        <Tag className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                        <span>
+                          Commission added by{" "}
+                          <span className="font-medium text-gray-900">
+                            {commissionAddedActivity.performedByName}
+                          </span>{" "}
+                          on {formatDateTime(commissionAddedActivity.createdAt).full}
+                        </span>
+                      </div>
+                    )}
+                    {commissionChangedActivity && (
+                      <div className="flex items-start gap-2 text-sm text-gray-700">
+                        <Tag className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                        <span>
+                          Commission last changed by{" "}
+                          <span className="font-medium text-gray-900">
+                            {commissionChangedActivity.performedByName}
+                          </span>{" "}
+                          on {formatDateTime(commissionChangedActivity.createdAt).full}{" "}
+                          (
+                          {formatAuditValue(
+                            commissionChangedActivity.previousValue,
+                            commissionChangedActivity.action
+                          )}{" "}
+                          →{" "}
+                          {formatAuditValue(
+                            commissionChangedActivity.newValue,
+                            commissionChangedActivity.action
+                          )}
+                          )
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -603,7 +721,7 @@ export default function ProductDetail() {
                   renderPriceCards()
                 )}
 
-                {!isDealer && !isEditMode && (
+                {isPrivilegedViewer && (
                   <div className="border-t pt-3">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-medium text-gray-700">
@@ -829,120 +947,6 @@ export default function ProductDetail() {
                 )}
               </div>
 
-              {isPrivilegedViewer && (
-                <div className="border-t pt-6 space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Product Activity
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Chronological audit trail for product changes.
-                    </p>
-                  </div>
-
-                  {activityItems.length === 0 ? (
-                    <div className="rounded-2xl border bg-white p-5 text-sm text-gray-500">
-                      No product activity recorded yet.
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {activityItems.map((event, index) => {
-                        const tone = getActivityTone(event.action);
-                        const timestamp = formatDateTime(event.createdAt);
-                        const hasPrevious =
-                          event.previousValue !== null &&
-                          event.previousValue !== undefined &&
-                          event.previousValue !== "";
-                        const hasNew =
-                          event.newValue !== null &&
-                          event.newValue !== undefined &&
-                          event.newValue !== "";
-
-                        return (
-                          <article
-                            key={`${event.action}-${event.createdAt}-${index}`}
-                            className="rounded-2xl border bg-white p-4 shadow-sm"
-                          >
-                            <div className="flex items-start gap-4">
-                              <div
-                                className={`flex h-10 w-10 items-center justify-center rounded-xl border ${tone.wrap}`}
-                              >
-                                {tone.icon}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div>
-                                    <h4 className="text-base font-semibold text-gray-900">
-                                      {formatActionLabel(event.action)}
-                                    </h4>
-                                    <div className="mt-1 flex flex-wrap gap-2 text-sm text-gray-600">
-                                      <span>
-                                        <span className="font-medium text-gray-900">
-                                          Performed By:
-                                        </span>{" "}
-                                        {event.performedByName || "System"}
-                                      </span>
-                                      <span>
-                                        <span className="font-medium text-gray-900">
-                                          Role:
-                                        </span>{" "}
-                                        {event.performedByRole || "System"}
-                                      </span>
-                                      <span>
-                                        <span className="font-medium text-gray-900">
-                                          Date &amp; Time:
-                                        </span>{" "}
-                                        {timestamp.full}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                                    #{index + 1}
-                                  </span>
-                                </div>
-
-                                {event.remarks && (
-                                  <p className="mt-3 text-sm text-gray-600">
-                                    <span className="font-medium text-gray-900">
-                                      Remarks:
-                                    </span>{" "}
-                                    {event.remarks}
-                                  </p>
-                                )}
-
-                                {(hasPrevious || hasNew) && (
-                                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                    {hasPrevious && (
-                                      <ValueTile
-                                        label="Previous Value"
-                                        value={formatAuditValue(
-                                          event.previousValue,
-                                          event.action
-                                        )}
-                                      />
-                                    )}
-                                    {hasNew && (
-                                      <ValueTile
-                                        label="New Value"
-                                        value={formatAuditValue(
-                                          event.newValue,
-                                          event.action
-                                        )}
-                                      />
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -956,17 +960,6 @@ function PriceTile({ label, value, tone = "text-gray-900" }) {
     <div className="rounded-xl border bg-white p-4">
       <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
       <p className={`mt-1 text-lg font-bold ${tone}`}>{value}</p>
-    </div>
-  );
-}
-
-function ValueTile({ label, value }) {
-  return (
-    <div className="rounded-xl border bg-gray-50 p-3">
-      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="mt-1 break-words text-sm font-semibold text-gray-900">
-        {value}
-      </p>
     </div>
   );
 }

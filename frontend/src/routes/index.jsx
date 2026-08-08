@@ -24,6 +24,7 @@ import WaitingForApproval from "../pages/auth/WaitingForApproval";
 import BannerManagement from "../pages/banner/BannerManagement ";
 import OrderList from "../pages/orders/OrderList";
 import OrderDetails from "../pages/orders/OrderDetails";
+import Unauthorized from "../pages/auth/Unauthorized";
 
 // Lazy-loaded pages
 const Login = lazy(() => import("../pages/auth/Login"));
@@ -52,7 +53,7 @@ const RoleBasedRedirect = () => {
     case "employee":
       return <Navigate to="/employee/dashboard" replace />;
     default:
-      return <Navigate to="/admin/dashboard" replace />;
+      return <Navigate to="/login" replace />;
   }
 };
 
@@ -118,9 +119,17 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/unauthorized",
+    element: (
+      <SuspenseWrapper>
+        <Unauthorized />
+      </SuspenseWrapper>
+    ),
+  },
+  {
     path: "/admin",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={["admin"]}>
         <MainLayout />
       </ProtectedRoute>
     ),
@@ -226,7 +235,7 @@ const router = createBrowserRouter([
   {
     path: "/dealer",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={["dealer"]}>
         <MainLayout />
       </ProtectedRoute>
     ),
@@ -276,7 +285,7 @@ const router = createBrowserRouter([
   {
     path: "/employee",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={["employee"]}>
         <MainLayout />
       </ProtectedRoute>
     ),
