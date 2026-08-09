@@ -15,6 +15,11 @@ import {
   Image,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import {
+  compressImages,
+  MAX_TOTAL_PHOTOS_SIZE,
+} from "../../utils/compressImage";
 import DealerModal from "../../components/dealer/DealerModal";
 import { ToastContainer } from "../Toast/Toast";
 import { useToast } from "../../hooks/useToast";
@@ -122,7 +127,7 @@ const DealersList = () => {
     setErrors({ ...errors, [name]: "" });
   };
 
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = async (e) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (selectedFiles.length === 0) return;
 
@@ -137,7 +142,19 @@ const DealersList = () => {
       return;
     }
 
-    const nextFiles = [...dealerPhotos, ...selectedFiles].slice(0, 5);
+    const compressedFiles = await compressImages(selectedFiles);
+    const nextFiles = [...dealerPhotos, ...compressedFiles].slice(0, 5);
+
+    const totalSize = nextFiles.reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > MAX_TOTAL_PHOTOS_SIZE) {
+      setErrors((prev) => ({
+        ...prev,
+        dealerPhotos: "This is too big, please use less size image on upload",
+      }));
+      e.target.value = "";
+      return;
+    }
+
     const nextPreviews = nextFiles.map((file) => URL.createObjectURL(file));
 
     photoPreviews.forEach((preview) => URL.revokeObjectURL(preview));
@@ -181,20 +198,10 @@ const DealersList = () => {
     dealerPhotos.forEach((photo) => payload.append("dealerPhotos", photo));
 
     try {
-      const res = await fetch(
+      await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/auth/dealer-register`,
-        {
-          method: "POST",
-          body: payload,
-        }
+        payload
       );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        addToast(data.message || "Something went wrong", "error");
-        return;
-      }
 
       // Refresh dealers list
       fetchDealers();
@@ -203,7 +210,7 @@ const DealersList = () => {
       closeModal();
     } catch (error) {
       console.error("Error:", error);
-      addToast("Server Error!", "error");
+      addToast(error.response?.data?.message || "Server Error!", "error");
     }
   };
 

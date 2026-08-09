@@ -18,6 +18,11 @@ import {
 import onlylogo from '../../assets/onlylogo.png';
 import logo from '../../assets/logo.png';
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import {
+  compressImages,
+  MAX_TOTAL_PHOTOS_SIZE,
+} from "../../utils/compressImage";
 
 const Register = () => {
   
@@ -81,7 +86,7 @@ const Register = () => {
     setErrors({ ...errors, [e.target.name]: "" });
   };
 
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = async (e) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (selectedFiles.length === 0) return;
 
@@ -96,7 +101,19 @@ const Register = () => {
       return;
     }
 
-    const nextFiles = [...dealerPhotos, ...selectedFiles].slice(0, 5);
+    const compressedFiles = await compressImages(selectedFiles);
+    const nextFiles = [...dealerPhotos, ...compressedFiles].slice(0, 5);
+
+    const totalSize = nextFiles.reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > MAX_TOTAL_PHOTOS_SIZE) {
+      setErrors((prev) => ({
+        ...prev,
+        dealerPhotos: "This is too big, please use less size image on upload",
+      }));
+      e.target.value = "";
+      return;
+    }
+
     const nextPreviews = nextFiles.map((file) => URL.createObjectURL(file));
 
     photoPreviews.forEach((preview) => URL.revokeObjectURL(preview));
@@ -147,23 +164,10 @@ const Register = () => {
     dealerPhotos.forEach((photo) => payload.append("dealerPhotos", photo));
 
     try {
-      const res = await fetch(
+      await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/auth/dealer-register`,
-        {
-          method: "POST",
-          body: payload,
-        }
+        payload
       );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setToastType("error");
-        setToastMessage(data.message || "Registration failed. Please try again.");
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-        return;
-      }
 
       setFormData({
         name: "",
@@ -195,7 +199,10 @@ const Register = () => {
     } catch (error) {
       console.error("Error:", error);
       setToastType("error");
-      setToastMessage("Server error! Please try again later.");
+      setToastMessage(
+        error.response?.data?.message ||
+          "Registration failed. Please try again."
+      );
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } finally {

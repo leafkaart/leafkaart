@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Search,
   Mail,
@@ -99,24 +100,15 @@ const EmployeeList = () => {
     if (!validateForm()) return;
 
     try {
-      const res = await fetch(
+      await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/auth/employee-register`,
+        formData,
         {
-          method: "POST",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
           },
-          body: JSON.stringify(formData),
         }
       );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        addToast(data.message || "Something went wrong", "error");
-        return;
-      }
 
       addToast("Employee added successfully!", "success");
 
@@ -126,7 +118,7 @@ const EmployeeList = () => {
       // Refresh the employee list from the server
       await fetchEmployees();
     } catch (error) {
-      addToast("Server Error!", "error");
+      addToast(error.response?.data?.message || "Server Error!", "error");
       console.error("Add Employee Error:", error);
     }
   };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Search,
   User,
@@ -72,21 +73,10 @@ const CustomersList = () => {
     };
 
     try {
-      const res = await fetch(
+      await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/auth/customer-register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
+        payload
       );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        addToast(data.message || "Something went wrong", "error");
-        return;
-      }
 
       const newCustomer = {
         id: customers.length + 1,
@@ -99,7 +89,7 @@ const CustomersList = () => {
       closeModal();
     } catch (error) {
       console.error("Error:", error);
-      addToast("Server Error!", "error");
+      addToast(error.response?.data?.message || "Server Error!", "error");
     }
   };
 
