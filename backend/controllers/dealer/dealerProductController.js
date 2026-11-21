@@ -44,6 +44,10 @@ const buildProductSavedPayload = (product, updates = {}) => {
     next.serialNumber = next.serialNumber.trim();
   }
 
+  if (typeof next.warranty === "string") {
+    next.warranty = next.warranty.trim();
+  }
+
   if (typeof (next.modelNumber || next.modalNumber) === "string") {
     next.modelNumber = (next.modelNumber || next.modalNumber).trim();
   }
@@ -81,6 +85,7 @@ exports.createProduct = async (req, res) => {
       sku,
       brand,
       shortDescription,
+      warranty,
       serialNumber,
       modelNumber,
       
@@ -168,6 +173,7 @@ exports.createProduct = async (req, res) => {
       sku,
       brand,
       shortDescription,
+      warranty,
       serialNumber,
       modelNumber,
       images: normalizeImages(uploadedImages, title),
@@ -368,6 +374,7 @@ exports.updateProduct = async (req, res) => {
     const fieldGroups = [
       "title",
       "shortDescription",
+      "warranty",
       "sku",
       "brand",
       "serialNumber",

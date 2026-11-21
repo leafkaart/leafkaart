@@ -20,6 +20,7 @@ const productSchema = new Schema({
   subCategoryId: { type: Schema.Types.ObjectId, ref: 'SubCategory' },
   title: { type: String, trim: true },
   shortDescription: { type: String },
+  warranty: { type: String, trim: true },
   sku: { type: String },
   brand: { type: String },
   serialNumber: {type: String},

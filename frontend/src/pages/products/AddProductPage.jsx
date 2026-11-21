@@ -15,6 +15,7 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
     dealerId: isDealer ? user?._id : "",
     title: "",
     shortDescription: "",
+    warranty: "",
     sku: "",
     brand: "",
     serialNumber: "",
@@ -112,6 +113,8 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
         formDataToSend.append("modelNumber", formData.modelNumber);
       if (formData.shortDescription)
         formDataToSend.append("shortDescription", formData.shortDescription);
+      const warranty = formData.warranty.trim();
+      if (warranty) formDataToSend.append("warranty", warranty);
 
       if (isDealer) {
         formDataToSend.append("dealerId", user._id);
@@ -319,6 +322,21 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
                     value={formData.modelNumber}
                     onChange={handleInputChange}
                     placeholder="Enter model number"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="product-warranty" className="block text-sm font-medium text-gray-700 mb-1">
+                    Warranty (optional)
+                  </label>
+                  <input
+                    id="product-warranty"
+                    type="text"
+                    name="warranty"
+                    value={formData.warranty}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 1 year manufacturer warranty"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   />
                 </div>

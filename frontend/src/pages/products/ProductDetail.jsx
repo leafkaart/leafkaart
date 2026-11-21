@@ -100,6 +100,7 @@ export default function ProductDetail() {
   const [formData, setFormData] = useState({
     title: "",
     shortDescription: "",
+    warranty: "",
     sku: "",
     brand: "",
     serialNumber: "",
@@ -189,6 +190,7 @@ export default function ProductDetail() {
       setFormData({
         title: product.title || "",
         shortDescription: product.shortDescription || "",
+        warranty: product.warranty || "",
         sku: product.sku || "",
         brand: product.brand || "",
         serialNumber: product.serialNumber || "",
@@ -422,6 +424,7 @@ export default function ProductDetail() {
                         setFormData({
                           title: product.title || "",
                           shortDescription: product.shortDescription || "",
+                          warranty: product.warranty || "",
                           sku: product.sku || "",
                           brand: product.brand || "",
                           serialNumber: product.serialNumber || "",
@@ -852,6 +855,31 @@ export default function ProductDetail() {
                       <p className="font-medium text-gray-900">
                         {product.modelNumber || "N/A"}
                       </p>
+                    )}
+                  </div>
+
+                  <div>
+                    {isEditMode ? (
+                      <>
+                        <label htmlFor="product-warranty" className="block text-sm text-gray-600 mb-1">
+                          Warranty (optional)
+                        </label>
+                        <input
+                          id="product-warranty"
+                          type="text"
+                          value={formData.warranty}
+                          onChange={(e) => handleInputChange("warranty", e.target.value)}
+                          placeholder="e.g., 1 year manufacturer warranty"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-600 mb-1">Warranty</p>
+                        <p className="break-words font-medium text-gray-900">
+                          {product.warranty || "Not specified"}
+                        </p>
+                      </>
                     )}
                   </div>
 
