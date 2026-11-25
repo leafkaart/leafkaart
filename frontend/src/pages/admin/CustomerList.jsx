@@ -11,7 +11,6 @@ import {
   Users,
   Info,
 } from "lucide-react";
-import { ToastContainer } from "../Toast/Toast";
 import { useToast } from "../../hooks/useToast";
 import CustomerModal from "../../components/customer/CustomerModal"; // adjust path if needed
 
@@ -19,7 +18,7 @@ const CustomersList = () => {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [customers, setCustomers] = useState([]);
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -142,7 +141,7 @@ const CustomersList = () => {
 
   return (
     <div className="py-4 px-6 bg-gray-50 h-screen overflow-hidden flex flex-col">
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

@@ -10,7 +10,6 @@ export const ordersApi = createApi({
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }
-      headers.set("Content-Type", "application/json");
       return headers;
     },
   }),
@@ -39,7 +38,7 @@ export const ordersApi = createApi({
     // Create order
     createOrder: builder.mutation({
       query: (orderData) => ({
-        url: "/createOrder",
+        url: "/orders/createOrder",
         method: "POST",
         body: orderData,
       }),
@@ -47,13 +46,22 @@ export const ordersApi = createApi({
     }),
 
     updateOrderStatus: builder.mutation({
-      query: ({ orderId, status }) => ({
-        url: `admin/orders/updateOrderStatus/${orderId}`,
+      query: ({ orderId, status, isDealer }) => ({
+        url: isDealer ? `/dealer/orders/${orderId}/status` : `/admin/orders/updateOrderStatus/${orderId}`,
         method: "PATCH",
         body: { status },
       }),
       invalidatesTags: ["Orders"],
     }),
+    reviewEmiDocuments: builder.mutation({
+      query: ({ orderId, status }) => ({
+        url: `/admin/orders/${orderId}/emi/review`,
+        method: "PATCH",
+        body: { status },
+      }),
+      invalidatesTags: (_result, _error, { orderId }) => [{ type: "Orders", id: orderId }],
+    }),
+
     updatePaymentStatus: builder.mutation({
       query: ({ orderId, action, utrNumber, description, remarks }) => ({
         url: `admin/orders/updatePaymentStatus/${orderId}`,
@@ -104,5 +112,6 @@ export const {
   useUnassignOrderToDealerMutation,
   useUpdateOrderStatusMutation,
   useUpdatePaymentStatusMutation,
+  useReviewEmiDocumentsMutation,
   useHandleReturnRequestMutation
 } = ordersApi;

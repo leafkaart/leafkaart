@@ -1,3 +1,4 @@
+const { LOW_STOCK_THRESHOLD } = require("../../utils/lowStock");
 const Product = require("../../models/Product");
 const Order = require("../../models/Order");
 
@@ -48,7 +49,9 @@ exports.getDealerDashboard = async (req, res) => {
 
     const lowStockProducts = await Product.find({
       dealerId,
-      stock: { $lt: 20 },
+      isActive: { $ne: false },
+      dealerVisible: { $ne: false },
+      stock: { $lt: LOW_STOCK_THRESHOLD },
     })
       .sort({ stock: 1, updatedAt: -1 })
       .select("title sku stock dealerId createdAt updatedAt")
@@ -106,6 +109,7 @@ exports.getDealerDashboard = async (req, res) => {
         recentProducts,
         recentOrders,
         lowStockProducts,
+        lowStockThreshold: LOW_STOCK_THRESHOLD,
       },
     });
   } catch (err) {

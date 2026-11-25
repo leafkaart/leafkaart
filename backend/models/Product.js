@@ -35,6 +35,8 @@ const productSchema = new Schema({
   isApproved: { type: Boolean, default: false },
   approvedAt: Date,
   approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  dealerVisible: { type: Boolean, default: true },
+  lowStockEvent: { type: Schema.Types.ObjectId, default: null },
   isActive: { type: Boolean, default: true },
   rating: { type: Number, default: 0 },
   ratingCount: { type: Number, default: 0 },

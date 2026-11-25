@@ -21,7 +21,6 @@ import {
   MAX_TOTAL_PHOTOS_SIZE,
 } from "../../utils/compressImage";
 import DealerModal from "../../components/dealer/DealerModal";
-import { ToastContainer } from "../Toast/Toast";
 import { useToast } from "../../hooks/useToast";
 
 const DealersList = () => {
@@ -34,7 +33,7 @@ const DealersList = () => {
   const [showDealerModal, setShowDealerModal] = useState(false);
   const [dealerPhotos, setDealerPhotos] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -354,7 +353,7 @@ const DealersList = () => {
         />
       )}
       <div className="py-4 px-6 bg-gray-50 h-screen overflow-hidden flex flex-col">
-        <ToastContainer toasts={toasts} removeToast={removeToast} />
+
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

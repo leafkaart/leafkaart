@@ -19,6 +19,10 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    if (role && !["user", "customer"].includes(role)) {
+      return res.status(403).json({ message: "This role cannot be registered publicly." });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: "Email already registered" });
@@ -28,7 +32,7 @@ exports.register = async (req, res) => {
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    const userRole = role || "user";
+    const userRole = "customer";
     const user = await User.create({
       name,
       email,
@@ -37,7 +41,7 @@ exports.register = async (req, res) => {
       role: userRole,
       otp,
       otpExpiry,
-      isVerified: userRole === "user",
+      isVerified: false,
     });
 
     await sendOTP(email, otp);

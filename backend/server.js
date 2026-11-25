@@ -1,9 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
+const { unlink } = require("node:fs/promises");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const fileUpload = require("express-fileupload");
+const { MAX_FILE_SIZE } = require("./utils/validateUpload");
 
 const database = require("./config/database");
 const { cloudinaryConnect } = require("./config/cloudinary");
@@ -49,9 +53,28 @@ app.use(bodyParser.json());
 app.use(
   fileUpload({
     useTempFiles: true,
-    tempFileDir: "/tmp/",
+    tempFileDir: join(tmpdir(), "leafkaart-uploads"),
+    tempFilePermissions: 0o600,
+    limits: { fileSize: MAX_FILE_SIZE },
+    abortOnLimit: true,
+    responseOnLimit: JSON.stringify({ message: "Each file must be 10 MB or smaller." }),
   })
 );
+
+app.use((req, res, next) => {
+  const files = Object.values(req.files || {}).flat();
+  if (files.length) {
+    res.once("close", () => {
+      for (const file of files) {
+        if (!file.tempFilePath) continue;
+        unlink(file.tempFilePath).catch((error) => {
+          if (error.code !== "ENOENT") console.error("Could not delete a temporary upload", error.code);
+        });
+      }
+    });
+  }
+  next();
+});
 
 app.use("/uploads", express.static("uploads"));
 
@@ -142,6 +165,8 @@ app.use(errorHandler);
    START SERVER
 ========================= */
 const PORT = process.env.PORT || 5000;
+const { startOrderNotificationWorker } = require("./utils/orderDispatch");
+startOrderNotificationWorker();
 
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);

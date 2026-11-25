@@ -1,4 +1,8 @@
 const mongoose = require('mongoose');
+const { customerCatalog } = require("../../utils/productVisibility");
+const { IMAGE_TYPES, DOCUMENT_TYPES, validateUpload } = require("../../utils/validateUpload");
+const { uploadEmiDocument } = require("../../utils/emiDocuments");
+const { notifyOrderCreated } = require("../../utils/orderDispatch");
 const Order = require("../../models/Order");
 const Cart = require("../../models/Cart");
 const Product = require("../../models/Product");
@@ -21,7 +25,7 @@ exports.createOrder = async (req, res) => {
       grandTotal,
       paymentMethod,
       paymentStatus = false
-    } = req.body;
+    } = req.body || {};
 
     // ✅ FIX: Parse items if coming as string (form-data)
     if (typeof items === "string") {
@@ -65,108 +69,10 @@ exports.createOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: "Address not found" });
     }
 
-    // --- UPLOAD PAYMENT IMAGE (if provided) ---
-    let paymentImageUrl = null;
-    let addharFrontImageUrl = null;
-    let aadharBackImageUrl = null;
-    let panCardImageUrl = null;
-    let otherDocuments = [];
-
-    if (paymentMethod === "EMI") {
-      const frontImage = req.files?.addharfrontimage || req.files?.aadhaarImage;
-      const backImage = req.files?.aadharbackimage;
-      const panCardImage = req.files?.pancardimage || req.files?.panImage;
-      const rawOtherDocs =
-        req.files?.otherDocuments ||
-        req.files?.otherDocument ||
-        req.files?.otherDocs;
-
-      if (!frontImage || !backImage || !panCardImage) {
-        return res.status(400).json({
-          success: false,
-          message: "Aadhar front, Aadhar back, and PAN card images are required for EMI payment",
-        });
-      }
-
-      const addharFrontUpload = await uploadImageToCloudinary(
-        frontImage,
-        "emi-documents",
-        1000,
-        1000
-      );
-
-      const aadharBackUpload = await uploadImageToCloudinary(
-        backImage,
-        "emi-documents",
-        1000,
-        1000
-      );
-
-      const panCardUpload = await uploadImageToCloudinary(
-        panCardImage,
-        "emi-documents",
-        1000,
-        1000
-      );
-
-      if (
-        !addharFrontUpload?.secure_url ||
-        !aadharBackUpload?.secure_url ||
-        !panCardUpload?.secure_url
-      ) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to upload EMI documents",
-        });
-      }
-
-      addharFrontImageUrl = addharFrontUpload.secure_url;
-      aadharBackImageUrl = aadharBackUpload.secure_url;
-      panCardImageUrl = panCardUpload.secure_url;
-
-      if (rawOtherDocs) {
-        const docs = Array.isArray(rawOtherDocs) ? rawOtherDocs : [rawOtherDocs];
-        for (const doc of docs) {
-          const upload = await uploadImageToCloudinary(
-            doc,
-            "emi-documents",
-            1200,
-            1200
-          );
-
-          if (upload?.secure_url) {
-            otherDocuments.push({
-              url: upload.secure_url,
-              name: doc.name || doc.originalFilename || "Other document",
-            });
-          }
-        }
-      }
-    }
-
-    if (req.files && req.files.paymentImage) {
-      const paymentImage = req.files.paymentImage;
-
-      const upload = await uploadImageToCloudinary(
-        paymentImage,
-        process.env.FOLDER_NAME || "payments",
-        1000,
-        1000
-      );
-
-      if (!upload?.secure_url) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to upload payment image"
-        });
-      }
-
-      paymentImageUrl = upload.secure_url;
-    }
-
     // --- VALIDATE PRODUCTS & STOCK ---
+    const requestedQuantities = new Map();
     for (const item of items) {
-      if (!item.product || !item.qty || item.qty < 1) {
+      if (!item?.product || !Number.isSafeInteger(Number(item.qty)) || Number(item.qty) < 1) {
         return res.status(400).json({
           success: false,
           message: "Each item must have a product and qty >= 1",
@@ -176,11 +82,11 @@ exports.createOrder = async (req, res) => {
       if (!mongoose.Types.ObjectId.isValid(item.product)) {
         return res.status(400).json({
           success: false,
-          message: `Invalid product ID: ${item.product}`
+          message: "An order item has an invalid product ID."
         });
       }
 
-      const product = await Product.findById(item.product);
+      const product = await Product.findOne({ _id: item.product, ...customerCatalog });
 
       if (!product) {
         return res.status(404).json({
@@ -189,14 +95,11 @@ exports.createOrder = async (req, res) => {
         });
       }
 
-      if (!product.isActive || !product.isApproved) {
-        return res.status(400).json({
-          success: false,
-          message: `Product not available: ${product.title}`
-        });
-      }
-
-      if (product.stock < item.qty) {
+      const productId = String(product._id);
+      const qty = Number(item.qty);
+      const requested = (requestedQuantities.get(productId) || 0) + qty;
+      requestedQuantities.set(productId, requested);
+      if (product.stock < requested) {
         return res.status(400).json({
           success: false,
           message: `Insufficient stock for ${product.title}`
@@ -206,8 +109,9 @@ exports.createOrder = async (req, res) => {
       // --- SNAPSHOT DATA ---
       item.title = product.title;
       item.sku = product.sku;
-      item.price = product.customerPrice || product.dealerPrice;
-      item.dealerPrice = product.dealerPrice || product.customerPrice || item.price;
+      item.qty = qty;
+      item.price = product.customerPrice ?? product.dealerPrice;
+      item.dealerPrice = product.dealerPrice ?? item.price;
       item.total = item.price * item.qty;
       item.dealer = product.dealerId;
       item.product = new mongoose.Types.ObjectId(item.product);
@@ -228,7 +132,11 @@ exports.createOrder = async (req, res) => {
 
     // ✅ FIX: use epsilon comparison instead of strict equality to avoid
     // false "mismatch" errors from floating point rounding
-    if (Math.abs(Number(grandTotal) - Number(computedGrandTotal)) > 0.01) {
+    if ([grandTotal, shippingCharges, taxAmount, discount].some((amount) =>
+      amount == null || amount === "" || !Number.isFinite(Number(amount)) || Number(amount) < 0)) {
+      return res.status(400).json({ success: false, message: "Order amounts must be valid non-negative numbers" });
+    }
+    if (Math.abs(Number(grandTotal) - computedGrandTotal) > 0.01) {
       return res.status(400).json({
         success: false,
         message: "Grand total mismatch",
@@ -243,12 +151,68 @@ exports.createOrder = async (req, res) => {
       Number(discount);
 
 
+    let paymentImageUrl = null;
+    let addharFrontImageUrl = null;
+    let aadharBackImageUrl = null;
+    let panCardImageUrl = null;
+    const otherDocuments = [];
+
+    const paymentImage = req.files?.paymentImage;
+    if (paymentImage) {
+      validateUpload(paymentImage, paymentMethod === "EMI" ? DOCUMENT_TYPES : IMAGE_TYPES, "Payment attachment");
+    }
+
+    if (paymentMethod === "EMI") {
+      const front = req.files?.addharfrontimage || req.files?.aadhaarImage;
+      const back = req.files?.aadharbackimage;
+      const pan = req.files?.pancardimage || req.files?.panImage;
+      if (!front || !back || !pan) {
+        return res.status(400).json({
+          success: false,
+          message: "Aadhaar front, Aadhaar back, and PAN card files are required for EMI payment.",
+        });
+      }
+      const supporting = req.files?.otherDocuments || req.files?.otherDocument || req.files?.otherDocs;
+      const docs = supporting ? [supporting].flat() : [];
+      if (docs.length > 6) {
+        return res.status(400).json({ success: false, message: "Upload at most six supporting documents." });
+      }
+      for (const [file, label] of [
+        [front, "Aadhaar front"], [back, "Aadhaar back"], [pan, "PAN card"],
+        ...docs.map((document) => [document, "Supporting document"]),
+      ]) validateUpload(file, DOCUMENT_TYPES, label);
+      addharFrontImageUrl = await uploadEmiDocument(front, "Aadhaar front");
+      aadharBackImageUrl = await uploadEmiDocument(back, "Aadhaar back");
+      panCardImageUrl = await uploadEmiDocument(pan, "PAN card");
+      for (const doc of docs) {
+        otherDocuments.push({
+          url: await uploadEmiDocument(doc, "Supporting document"),
+          name: doc.name || "Supporting document",
+        });
+      }
+    }
+
+    if (paymentImage) {
+      if (paymentMethod === "EMI") {
+        paymentImageUrl = await uploadEmiDocument(paymentImage, "Payment attachment");
+      } else {
+        try {
+          const asset = await uploadImageToCloudinary(paymentImage, process.env.FOLDER_NAME || "payments", 1000, "auto");
+          if (!asset?.secure_url) throw new Error("Missing payment image URL");
+          paymentImageUrl = asset.secure_url;
+        } catch (error) {
+          console.error("Payment image upload failed", error);
+          return res.status(502).json({ success: false, message: "Could not upload the payment image." });
+        }
+      }
+    }
 
     // --- CREATE ORDER NUMBER ---
-    const orderNumber = "ORD-" + Date.now();
+    const orderNumber = `ORD-${Date.now()}`;
 
     // --- CREATE ORDER ---
-    const order = await Order.create({
+    const order = new Order({
+      createdNotificationPending: true,
       orderNumber,
       user: req.user._id,
       items,
@@ -261,12 +225,9 @@ exports.createOrder = async (req, res) => {
 
       dealerShowGrandTotal: dealerShowComputedGrandTotal,
       address: new mongoose.Types.ObjectId(address),
-      payment: req.body.payment || null,
+      payment: req.body?.payment || null,
       paymentMethod,
       paymentImage: paymentImageUrl,
-      addharfrontimage: paymentMethod === "EMI" ? addharFrontImageUrl : null,
-      aadharbackimage: paymentMethod === "EMI" ? aadharBackImageUrl : null,
-      pancardimage: paymentMethod === "EMI" ? panCardImageUrl : null,
       emiDocuments:
         paymentMethod === "EMI"
           ? {
@@ -318,19 +279,9 @@ exports.createOrder = async (req, res) => {
     await Cart.findOneAndUpdate(
       { user: req.user._id },
       { $set: { items: [], totalAmount: 0 } }
-    );
+    ).catch((error) => console.error("Could not clear cart after order creation", error));
 
-    const dealerIds = [
-      ...new Set(items.map((item) => item.dealer?.toString()).filter(Boolean)),
-    ];
-    const adminAndEmployeeIds = await getUserIdsByRoles(["admin", "employee"]);
-
-    await createAndSendNotifications({
-      userIds: [...dealerIds, ...adminAndEmployeeIds],
-      orderId: order._id,
-      message: `New order placed: ${order.orderNumber}`,
-      type: "order",
-    });
+    await notifyOrderCreated(order).catch((error) => console.error("Order-created notification pending", error));
 
     return res.json({
       success: true,
@@ -339,10 +290,13 @@ exports.createOrder = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Create order error:", err);
-    return res.status(500).json({
+    if (!err.status) console.error("Create order error:", err);
+    const invalidOrder = ["ValidationError", "CastError"].includes(err.name);
+    return res.status(err.status || (invalidOrder ? 400 : 500)).json({
       success: false,
-      message: err.message
+      message: err.status ? err.message : invalidOrder
+        ? "One or more order fields are invalid."
+        : "The order could not be placed. Please try again.",
     });
   }
 };

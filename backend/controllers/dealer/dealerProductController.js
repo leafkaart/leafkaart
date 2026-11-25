@@ -1,3 +1,7 @@
+const mongoose = require("mongoose");
+const { catalogFor, customerCatalog, STAFF_PRODUCT } = require("../../utils/productVisibility");
+const { IMAGE_TYPES, validateUpload } = require("../../utils/validateUpload");
+const { syncLowStockAlert } = require("../../utils/lowStock");
 const Product = require("../../models/Product");
 const Category = require("../../models/Category");
 const SubCategory = require("../../models/SubCategory");
@@ -7,6 +11,20 @@ const {
   getUserIdsByRoles,
   createAndSendNotifications,
 } = require("../../utils/notificationHelper");
+
+async function uploadProductImage(file) {
+  try {
+    const asset = await uploadImageToCloudinary(file, process.env.FOLDER_NAME, 1000, "auto", {
+      resource_type: "image",
+      allowed_formats: ["jpg", "jpeg", "png"],
+    });
+    if (!asset?.secure_url) throw new Error("Missing product image URL");
+    return asset;
+  } catch (error) {
+    console.error("Product image upload failed", error);
+    throw Object.assign(new Error("Could not upload the product image. Please try again."), { status: 502 });
+  }
+}
 
 const getUploadedImages = (req) => {
   const rawImages =
@@ -74,7 +92,7 @@ const buildProductSavedPayload = (product, updates = {}) => {
 
 exports.createProduct = async (req, res) => {
   try {
-    console.log("Received createProduct request with body:", req.body);
+    const isAdmin = req.user.role === "admin";
 
     const {
       title,
@@ -91,7 +109,7 @@ exports.createProduct = async (req, res) => {
       
     } = req.body;
 
-    if (!title || title.trim() === "")
+    if (typeof title !== "string" || !title.trim())
       return res
         .status(400)
         .json({ success: false, message: "Title is required" });
@@ -106,11 +124,17 @@ exports.createProduct = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Sub-category ID is required" });
 
-    if (stock != null && stock < 0)
+    if (!Number.isSafeInteger(Number(stock ?? 0)) || Number(stock) < 0)
       return res
         .status(400)
-        .json({ success: false, message: "Stock cannot be negative" });
+        .json({ success: false, message: "Stock must be a non-negative whole number" });
 
+    if (!mongoose.isValidObjectId(categoryId) || !mongoose.isValidObjectId(subCategoryId)) {
+      return res.status(400).json({ success: false, message: "Invalid category or subcategory" });
+    }
+    if (dealerPrice == null || dealerPrice === "" || !Number.isFinite(Number(dealerPrice)) || Number(dealerPrice) < 0) {
+      return res.status(400).json({ success: false, message: "Price must be a non-negative number" });
+    }
     const category = await Category.findById(categoryId);
     if (!category)
       return res
@@ -142,19 +166,10 @@ exports.createProduct = async (req, res) => {
       });
     }
 
+    images.forEach((image) => validateUpload(image, IMAGE_TYPES, "Product image"));
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
-      const upload = await uploadImageToCloudinary(
-        img,
-      process.env.FOLDER_NAME,
-      1000,
-      1000
-      );
-
-      if (!upload || !upload.secure_url)
-        return res
-          .status(500)
-          .json({ success: false, message: "Image upload failed" });
+      const upload = await uploadProductImage(img);
 
       uploadedImages.push({
         url: upload.secure_url,
@@ -177,7 +192,14 @@ exports.createProduct = async (req, res) => {
       serialNumber,
       modelNumber,
       images: normalizeImages(uploadedImages, title),
-      dealerId: req.user._id,
+      dealerId: isAdmin ? undefined : req.user._id,
+      isApproved: isAdmin,
+      ...(isAdmin && {
+        dealerVisible: ![false, "false"].includes(req.body.dealerVisible),
+        isActive: ![false, "false"].includes(req.body.isActive),
+        approvedAt: new Date(),
+        approvedBy: req.user._id,
+      }),
     });
 
     appendProductActivity(product, {
@@ -197,13 +219,17 @@ exports.createProduct = async (req, res) => {
 
     await product.save();
 
-    const adminAndEmployeeIds = await getUserIdsByRoles(["admin", "employee"]);
+    await syncLowStockAlert(product);
+    const adminAndEmployeeIds = isAdmin ? [] : await getUserIdsByRoles(["admin", "employee"]).catch((error) => {
+      console.error("Product recipient lookup failed", error);
+      return [];
+    });
     await createAndSendNotifications({
       userIds: adminAndEmployeeIds,
       productId: product._id,
       message: `New Product Added: ${title}`,
       type: "product",
-    });
+    }).catch((error) => console.error("Product notification failed", error));
 
     res.status(201).json({
       success: true,
@@ -211,21 +237,21 @@ exports.createProduct = async (req, res) => {
       data: product,
     });
   } catch (err) {
-    console.error("createProduct error:", err);
-    res.status(500).json({
+    if (!err.status) console.error("createProduct error:", err);
+    res.status(err.status || (err.name === "ValidationError" || err.name === "CastError" ? 400 : 500)).json({
       success: false,
-      message: err?.message || "Server error",
+      message: err.status ? err.message : err.name === "ValidationError" || err.name === "CastError"
+        ? "One or more product fields are invalid" : "Could not save the product. Please try again.",
     });
   }
 };
 
 exports.listProducts = async (req, res) => {
   try {
-    let filter = {};
-    
-    // Role-based filter
-    if (req.user.role === "dealer") {
-      filter.dealerId = req.user._id;
+    const filter = { $and: [catalogFor(req.user)] };
+    if (req.query.view === "admin") filter.$and.push(STAFF_PRODUCT);
+    if (req.query.view === "available") {
+      filter.$and.push(customerCatalog);
     }
 
     // Category filter
@@ -240,10 +266,11 @@ exports.listProducts = async (req, res) => {
 
     // Search filter
     if (req.query.search) {
+      const search = String(req.query.search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       filter.$or = [
-        { title: { $regex: req.query.search, $options: "i" } },
-        { shortDescription: { $regex: req.query.search, $options: "i" } },
-        { sku: { $regex: req.query.search, $options: "i" } },
+        { title: { $regex: search, $options: "i" } },
+        { shortDescription: { $regex: search, $options: "i" } },
+        { sku: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -264,7 +291,7 @@ exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findOne({
       _id: req.params.id,
-      dealerId: req.user._id,
+      ...catalogFor(req.user),
     });
 
     if (!product)
@@ -284,6 +311,7 @@ exports.updateProduct = async (req, res) => {
     const product = await Product.findOne({
       _id: req.params.id,
       ...(req.user.role === "dealer" && { dealerId: req.user._id }),
+      ...(req.user.role === "employee" && { $or: [STAFF_PRODUCT, { employeeId: req.user._id }] }),
     });
 
     if (!product) {
@@ -292,11 +320,27 @@ exports.updateProduct = async (req, res) => {
         .json({ success: false, message: "Product not found" });
     }
 
-    if (product.dealerId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'You are not authorized to modify this product' });
+    const input = req.body || {};
+    for (const field of ["stock", "dealerPrice", "customerPrice"]) {
+      if (input[field] === undefined) continue;
+      const number = Number(input[field]);
+      if (input[field] === "" || !Number.isFinite(number) || number < 0 ||
+          (field === "stock" && !Number.isSafeInteger(number))) {
+        return res.status(400).json({ success: false, message: `Invalid ${field}` });
+      }
     }
-
-    const updates = buildProductSavedPayload(product, { ...req.body });
+    if (input.categoryId !== undefined || input.subCategoryId !== undefined) {
+      const categoryId = input.categoryId ?? product.categoryId;
+      const subCategoryId = input.subCategoryId ?? product.subCategoryId;
+      if (!mongoose.isValidObjectId(categoryId) || !mongoose.isValidObjectId(subCategoryId) ||
+          !await SubCategory.exists({ _id: subCategoryId, categoryId })) {
+        return res.status(400).json({ success: false, message: "Invalid category or subcategory" });
+      }
+    }
+    if (input.title !== undefined && (typeof input.title !== "string" || !input.title.trim())) {
+      return res.status(400).json({ success: false, message: "Title is required" });
+    }
+    const updates = buildProductSavedPayload(product, input);
 
     let uploadedImages = [];
     const activityEntries = [];
@@ -341,18 +385,9 @@ exports.updateProduct = async (req, res) => {
           .status(400)
           .json({ success: false, message: "Max 6 images allowed" });
 
-      for (let img of images) {
-        const upload = await uploadImageToCloudinary(
-          img,
-          process.env.FOLDER_NAME,
-          1000,
-          1000
-        );
-
-        if (!upload.secure_url)
-          return res
-            .status(500)
-            .json({ success: false, message: "Failed to upload image" });
+      images.forEach((image) => validateUpload(image, IMAGE_TYPES, "Product image"));
+      for (const img of images) {
+        const upload = await uploadProductImage(img);
 
         uploadedImages.push({
           url: upload.secure_url,
@@ -485,7 +520,7 @@ exports.updateProduct = async (req, res) => {
     }
 
     if (updates.isActive !== undefined) {
-      const nextIsActive = Boolean(updates.isActive);
+      const nextIsActive = ![false, "false"].includes(updates.isActive);
       if (nextIsActive !== Boolean(product.isActive)) {
         product.isActive = nextIsActive;
         activityEntries.push({
@@ -494,6 +529,15 @@ exports.updateProduct = async (req, res) => {
           newValue: nextIsActive,
           remarks: nextIsActive ? "Product activated" : "Product deactivated",
         });
+      }
+    }
+
+    if ((req.user.role === "admin" || STAFF_PRODUCT.createdByRole.test(product.createdByRole)) && updates.dealerVisible !== undefined) {
+      const next = ![false, "false"].includes(updates.dealerVisible);
+      if (next !== product.dealerVisible) {
+        previousValues.dealerVisible = product.dealerVisible;
+        nextValues.dealerVisible = next;
+        product.dealerVisible = next;
       }
     }
 
@@ -518,6 +562,7 @@ exports.updateProduct = async (req, res) => {
 
     if (activityEntries.length > 0) {
       await product.save();
+      await syncLowStockAlert(product);
     }
 
     // ---------------- Real-time Socket Event ----------------
@@ -529,10 +574,11 @@ exports.updateProduct = async (req, res) => {
       data: product,
     });
   } catch (err) {
-    console.error("updateProduct error:", err);
-    res.status(500).json({
+    if (!err.status) console.error("updateProduct error:", err);
+    res.status(err.status || (err.name === "ValidationError" || err.name === "CastError" ? 400 : 500)).json({
       success: false,
-      message: err?.message || "Server error",
+      message: err.status ? err.message : err.name === "ValidationError" || err.name === "CastError"
+        ? "One or more product fields are invalid" : "Could not save the product. Please try again.",
     });
   }
 };
@@ -556,9 +602,10 @@ exports.deleteProduct = async (req, res) => {
     });
   } catch (err) {
     console.error("deleteProduct error:", err);
-    res.status(500).json({
+    res.status(err.status || (err.name === "ValidationError" || err.name === "CastError" ? 400 : 500)).json({
       success: false,
-      message: err?.message || "Server error",
+      message: err.status ? err.message : err.name === "ValidationError" || err.name === "CastError"
+        ? "One or more product fields are invalid" : "Could not save the product. Please try again.",
     });
   }
 };
@@ -567,7 +614,7 @@ exports.updateStock = async (req, res) => {
   try {
     const { stock } = req.body;
 
-    if (stock == null || stock < 0)
+    if (stock == null || stock === "" || !Number.isSafeInteger(Number(stock)) || Number(stock) < 0)
       return res
         .status(400)
         .json({ success: false, message: "Valid stock value required" });
@@ -595,6 +642,7 @@ exports.updateStock = async (req, res) => {
         remarks: "Stock quantity updated",
       });
       await product.save();
+      await syncLowStockAlert(product);
     }
 
     // ---------------- Real-time Socket Event ----------------
@@ -605,9 +653,10 @@ exports.updateStock = async (req, res) => {
     });
   } catch (err) {
     console.error("updateStock error:", err);
-    res.status(500).json({
+    res.status(err.status || (err.name === "ValidationError" || err.name === "CastError" ? 400 : 500)).json({
       success: false,
-      message: err?.message || "Server error",
+      message: err.status ? err.message : err.name === "ValidationError" || err.name === "CastError"
+        ? "One or more product fields are invalid" : "Could not save the product. Please try again.",
     });
   }
 };

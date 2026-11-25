@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Building2,
   Mail,
@@ -185,7 +185,7 @@ const DealerDashboard = () => {
 
             <Panel
               title="Low Stock Alerts"
-              subtitle="Your products with stock below 20 units"
+              subtitle={`Your products with stock below ${dashboard.lowStockThreshold ?? 5} units`}
             >
               {lowStockProducts.length > 0 ? (
                 <div className="space-y-3">
@@ -197,7 +197,9 @@ const DealerDashboard = () => {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-semibold text-gray-900">
-                            {product.title || "Untitled Product"}
+                            <Link to={`/dealer/products/${product._id}`} className="underline-offset-2 hover:underline">
+                              {product.title || "Untitled Product"}
+                            </Link>
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
                             SKU: {product.sku || "N/A"}

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   useGetProductByIdQuery,
-  useGetProductsQuery,
 } from "../../store/api/productsApi";
 import {
   ChevronLeft,
@@ -16,7 +15,6 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import axios from "axios";
-import { ToastContainer } from "../Toast/Toast"; // Adjust path as needed
 import { useToast } from "../../hooks/useToast"; // Adjust path as needed
 
 const formatDateTime = (value) => {
@@ -97,6 +95,7 @@ const formatAuditValue = (value, action = "") => {
 
 export default function ProductDetail() {
   const [isEditMode, setIsEditMode] = useState(false);
+  const [confirmEdit, setConfirmEdit] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     shortDescription: "",
@@ -110,7 +109,7 @@ export default function ProductDetail() {
     categoryId: "",
     subCategoryId: "",
   });
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isDealer = user?.role === "dealer";
   const userRole = user?.role || "customer";
@@ -121,9 +120,12 @@ export default function ProductDetail() {
     error,
     refetch,
   } = useGetProductByIdQuery(productId);
-  const canEdit =
-    isDealer &&
-    (product?.dealerId?._id === user._id || product?.dealerId === user._id);
+  const isAdmin = userRole === "admin";
+  const canManageInventory = isAdmin ||
+    (userRole === "employee" && product?.createdByRole?.toLowerCase() === "admin");
+  const canEdit = canManageInventory || (
+    isDealer && (product?.dealerId?._id === user._id || product?.dealerId === user._id)
+  );
   const [selectedImage, setSelectedImage] = useState(0);
   const [commission, setCommission] = useState(0);
   const [isEditingCommission, setIsEditingCommission] = useState(false);
@@ -195,8 +197,10 @@ export default function ProductDetail() {
         brand: product.brand || "",
         serialNumber: product.serialNumber || "",
         modelNumber: product.modelNumber || "",
-        dealerPrice: product.dealerPrice || "",
-        stock: product.stock || "",
+        dealerPrice: product.dealerPrice ?? "",
+        stock: product.stock ?? 0,
+        dealerVisible: product.dealerVisible !== false,
+        isActive: product.isActive !== false,
         categoryId: product.categoryId?._id || product.categoryId || "",
         subCategoryId: product.subCategoryId?._id || product.subCategoryId || "",
       });
@@ -215,6 +219,14 @@ export default function ProductDetail() {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
     if (!files.length) return;
+    if (files.some((file) => !["image/jpeg", "image/png"].includes(file.type))) {
+      addToast("Upload PNG or JPEG product images.", "error");
+      return;
+    }
+    if (files.some((file) => file.size > 10 * 1024 * 1024)) {
+      addToast("Each product image must be 10 MB or smaller.", "error");
+      return;
+    }
 
     const remainingSlots = Math.max(
       0,
@@ -259,12 +271,14 @@ export default function ProductDetail() {
     try {
       const payload = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value !== undefined && value !== null &&
+            (value !== "" || !["categoryId", "subCategoryId"].includes(key)) &&
+            (canManageInventory || !["dealerVisible", "isActive"].includes(key))) {
           payload.append(key, value);
         }
       });
 
-      if (isDealer) {
+      if (canEdit) {
         payload.append(
           "existingImages",
           JSON.stringify(existingImages.map((image) => image._id))
@@ -272,7 +286,7 @@ export default function ProductDetail() {
         newImages.forEach((file) => payload.append("images", file));
       }
 
-      const endpointBase = isDealer ? "/dealer/products" : "/employee/products";
+      const endpointBase = isDealer ? "/dealer/products" : "/admin/products";
       const response = await axios.patch(
         `${import.meta.env.VITE_BACKEND_URL}${endpointBase}/updateProduct/${productId}`,
         payload,
@@ -385,8 +399,24 @@ export default function ProductDetail() {
 
   return (
     <>
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       <div className="min-h-screen bg-gray-50">
+      {confirmEdit && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-product-edit"
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <h2 id="confirm-product-edit" className="text-lg font-semibold">Save changes to this product?</h2>
+            <div className="mt-5 flex justify-end gap-3">
+              <button type="button" className="rounded-lg border px-4 py-2"
+                onClick={() => setConfirmEdit(false)}>Cancel</button>
+              <button type="button" className="rounded-lg bg-amber-700 px-4 py-2 text-white" onClick={() => {
+                setConfirmEdit(false);
+                handleUpdateProduct();
+              }}>Save changes</button>
+            </div>
+          </div>
+        </div>
+      )}
         {/* Header */}
         <div className="bg-white border-b sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -403,7 +433,7 @@ export default function ProductDetail() {
                 {isEditMode ? (
                   <>
                     <button
-                      onClick={handleUpdateProduct}
+                      onClick={() => isAdmin ? setConfirmEdit(true) : handleUpdateProduct()}
                       disabled={isSaving}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
                     >
@@ -429,8 +459,10 @@ export default function ProductDetail() {
                           brand: product.brand || "",
                           serialNumber: product.serialNumber || "",
                           modelNumber: product.modelNumber || "",
-                          dealerPrice: product.dealerPrice || "",
-                          stock: product.stock || "",
+                          dealerPrice: product.dealerPrice ?? "",
+                          stock: product.stock ?? 0,
+                          dealerVisible: product.dealerVisible !== false,
+                          isActive: product.isActive !== false,
                           categoryId: product.categoryId?._id || "",
                           subCategoryId: product.subCategoryId?._id || "",
                         });
@@ -471,7 +503,7 @@ export default function ProductDetail() {
               </div>
 
               {/* Thumbnail Images */}
-              {isEditMode && isDealer ? (
+              {isEditMode && canEdit ? (
                 existingImages.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {existingImages.map((image, index) => (
@@ -538,7 +570,7 @@ export default function ProductDetail() {
               )}
 
               {/* Edit Mode - Add Photos (dealer only) */}
-              {isEditMode && isDealer && (
+              {isEditMode && canEdit && (
                 <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium text-gray-700">
@@ -549,7 +581,7 @@ export default function ProductDetail() {
                       Choose Photos
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png"
                         multiple
                         className="hidden"
                         onChange={handleImageSelect}
@@ -886,14 +918,14 @@ export default function ProductDetail() {
                   <div>
                     <p className="text-sm text-gray-600">Category</p>
                     <p className="font-medium text-gray-900">
-                      {product.categoryId.name}
+                      {product.categoryId?.name || "Unassigned"}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-600">Sub Category</p>
                     <p className="font-medium text-gray-900">
-                      {product.subCategoryId.name}
+                      {product.subCategoryId?.name || "Unassigned"}
                     </p>
                   </div>
 
@@ -918,6 +950,19 @@ export default function ProductDetail() {
                 </div>
               </div>
 
+              {isEditMode && canManageInventory && (
+                <div className="flex flex-wrap gap-5 border-t pt-4">
+                  {[["isActive", "Active catalog product"], ["dealerVisible", "Visible to dealers"]]
+                    .map(([field, label]) => (
+                      <label key={field} className="flex items-center gap-2 text-sm font-medium">
+                        <input type="checkbox" checked={formData[field] ?? true}
+                          onChange={(event) => handleInputChange(field, event.target.checked)} />
+                        {label}
+                      </label>
+                    ))}
+                </div>
+              )}
+
               {/* Dealer Information */}
               {(userRole === "admin" || userRole === "employee") && (
                 <div className="border-t pt-6 space-y-3">
@@ -931,7 +976,7 @@ export default function ProductDetail() {
                     <div>
                       <p className="text-sm text-gray-600">Dealer Name</p>
                       <p className="font-medium text-gray-900">
-                        {product.dealerId.name}
+                        {product.dealerId?.name || "Admin inventory"}
                       </p>
                     </div>
                   </div>
@@ -939,7 +984,7 @@ export default function ProductDetail() {
                   <div className="flex items-center">
                     <span className="text-sm text-gray-600 ml-7">Email: </span>
                     <span className="font-medium text-gray-900 ml-2">
-                      {product.dealerId.email}
+                      {product.dealerId?.email || "—"}
                     </span>
                   </div>
                 </div>

@@ -1,4 +1,5 @@
 const Wishlist = require("../../models/Wishlist");
+const { approvedCatalogFor } = require("../../utils/productVisibility");
 const Product = require("../../models/Product");
 
 exports.addWishlist = async (req, res) => {
@@ -11,7 +12,7 @@ exports.addWishlist = async (req, res) => {
     }
 
     // Check product exists
-    const productExists = await Product.findById(productId);
+    const productExists = await Product.findOne({ _id: productId, ...approvedCatalogFor(req.user) });
     if (!productExists) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
@@ -42,7 +43,7 @@ exports.addWishlist = async (req, res) => {
 exports.listWishlist = async (req, res) => {
   try {
     const wishlist = await Wishlist.findOne({ user: req.user._id })
-      .populate("products");
+      .populate({ path: "products", match: approvedCatalogFor(req.user) });
 
     res.json({
       success: true,

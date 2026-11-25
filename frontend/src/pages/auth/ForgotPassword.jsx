@@ -3,7 +3,6 @@ import { Mail, ArrowLeft } from "lucide-react";
 import logo from '../../assets/logo.png';
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { ToastContainer } from "../Toast/Toast";
 import { useToast } from "../../hooks/useToast";
 
 const ForgotPassword = () => {
@@ -11,7 +10,7 @@ const ForgotPassword = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
 
   const validateEmail = () => {
     if (!email) return "Email is required";
@@ -58,7 +57,7 @@ const ForgotPassword = () => {
 
   return (
     <>
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
 
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">

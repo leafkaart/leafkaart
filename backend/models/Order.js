@@ -28,6 +28,10 @@ const dealerAssignSchema = new Schema(
 
 const orderSchema = new Schema(
   {
+    dispatchPending: { type: Boolean, select: false },
+    createdNotificationPending: { type: Boolean, select: false },
+    dispatchEmailClaimedAt: { type: Date, select: false },
+    dispatchEmailState: { type: String, enum: ["sending", "sent"], select: false },
     orderNumber: { type: String, required: true, unique: true, index: true },
     user: {
       type: Schema.Types.ObjectId,
@@ -159,6 +163,9 @@ const orderSchema = new Schema(
         default: "pending",
       },
       uploadedAt: { type: Date, default: null },
+      reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      reviewedByName: String,
+      reviewedAt: Date,
     },
 
     meta: Schema.Types.Mixed,
@@ -191,7 +198,26 @@ const orderSchema = new Schema(
       updatedAt: Date,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      transform(_document, order) {
+        delete order.addharfrontimage;
+        delete order.aadharbackimage;
+        delete order.pancardimage;
+        delete order.emiDocuments;
+        delete order.dispatchEmailState;
+        delete order.dispatchEmailClaimedAt;
+        delete order.dispatchPending;
+        delete order.createdNotificationPending;
+        if (order.paymentMethod === "EMI") delete order.paymentImage;
+        return order;
+      },
+    },
+  }
 );
+
+orderSchema.index({ dispatchPending: 1, updatedAt: 1 }, { partialFilterExpression: { dispatchPending: true } });
+orderSchema.index({ createdNotificationPending: 1, updatedAt: 1 }, { partialFilterExpression: { createdNotificationPending: true } });
 
 module.exports = mongoose.model("Order", orderSchema);

@@ -1,3 +1,4 @@
+const { catalogFor, approvedCatalogFor } = require("../../utils/productVisibility");
 const Product = require("../../models/Product");
 const slugify = require("slugify");
 const { isAdminOrEmployee } = require("../../utils/productActivity");
@@ -84,8 +85,8 @@ exports.list = async (req, res) => {
 
 exports.getById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
-      .populate('dealerId')
+    const product = await Product.findOne({ _id: req.params.id, ...catalogFor(req.user) })
+      .populate('dealerId', 'name email storeName')
       .populate('categoryId')
       .populate('subCategoryId');
 
@@ -172,7 +173,7 @@ exports.remove = async (req, res) => {
 
 exports.listApproved = async (req, res) => {
   try {
-    const products = await Product.find({ isApproved: true });
+    const products = await Product.find(approvedCatalogFor(req.user));
     res.json({ success: true, products });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -181,7 +182,7 @@ exports.listApproved = async (req, res) => {
 
 exports.listByCategory = async (req, res) => {
   try {
-    const products = await Product.find({ category: req.params.categoryId });
+    const products = await Product.find({ ...approvedCatalogFor(req.user), categoryId: req.params.CategoryId });
     res.json({ success: true, products });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -190,7 +191,7 @@ exports.listByCategory = async (req, res) => {
 
 exports.listByDealer = async (req, res) => {
   try {
-    const products = await Product.find({ dealer: req.params.dealerId });
+    const products = await Product.find({ ...approvedCatalogFor(req.user), dealerId: req.params.dealerId });
     res.json({ success: true, products });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -199,7 +200,7 @@ exports.listByDealer = async (req, res) => {
 
 exports.listByEmployee = async (req, res) => {
   try {
-    const products = await Product.find({ employee: req.params.employeeId });
+    const products = await Product.find({ ...approvedCatalogFor(req.user), employeeId: req.params.employeeId });
     res.json({ success: true, products });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -215,7 +216,10 @@ exports.search = async (req, res) => {
     }
 
     const products = await Product.find({
-      $text: { $search: q }
+      ...approvedCatalogFor(req.user),
+      $or: ["title", "sku", "shortDescription"].map((field) => ({
+        [field]: { $regex: String(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" },
+      })),
     });
 
     res.json({ success: true, products });

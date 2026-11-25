@@ -3,7 +3,6 @@ import { Eye, EyeOff, Leaf, Mail, Lock, User, Shield } from "lucide-react";
 import logo from "../../assets/logo.png";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { ToastContainer } from "../Toast/Toast"; // Adjust path as needed
 import { useToast } from "../../hooks/useToast"; // Adjust path as needed
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../../store/slices/authSlice"; // Use setCredentials instead of loginSuccess
@@ -15,7 +14,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
 
   const validateForm = () => {
     const newErrors = {};
@@ -121,7 +120,7 @@ const Login = () => {
 
   return (
     <>
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
 
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">

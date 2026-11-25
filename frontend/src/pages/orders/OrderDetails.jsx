@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { apiErrorMessage } from "../../utils/apiError";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   useGetOrderQuery,
+  useReviewEmiDocumentsMutation,
   useGetDealersByPincodeQuery,
   useAssignDealerToOrderMutation,
   useUnassignOrderToDealerMutation,
@@ -25,7 +27,6 @@ import {
   ShieldCheck,
   CircleDot,
 } from "lucide-react";
-import { ToastContainer } from "../Toast/Toast";
 import { useToast } from "../../hooks/useToast";
 
 const formatDateTime = (value) => {
@@ -163,7 +164,7 @@ const getOrderPricing = (order) => {
 export default function OrderDetail() {
   const { orderId } = useParams();
   const { data: order, isLoading, error, refetch } = useGetOrderQuery(orderId);
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
   const [showDealerPanel, setShowDealerPanel] = useState(false);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [assignNotes, setAssignNotes] = useState("");
@@ -179,9 +180,44 @@ export default function OrderDetail() {
   });
   const [returnAdminMessage, setReturnAdminMessage] = useState("");
   const [emiPreview, setEmiPreview] = useState(null);
+  const [openingDocument, setOpeningDocument] = useState(null);
+  const [reviewEmiDocuments, { isLoading: reviewingEmi }] = useReviewEmiDocumentsMutation();
+
+  useEffect(() => {
+    if (!emiPreview?.url) return;
+    return () => URL.revokeObjectURL(emiPreview.url);
+  }, [emiPreview]);
+
+  async function openEmiDocument(file) {
+    setOpeningDocument(file.id);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/admin/orders/${orderId}/emi/documents/${encodeURIComponent(file.id)}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw { status: response.status, data };
+      }
+      const document = await response.blob();
+      setEmiPreview({ title: file.name, url: URL.createObjectURL(document), type: document.type });
+    } catch (error) {
+      addToast(apiErrorMessage(error, "Could not open the EMI document."), "error");
+    } finally {
+      setOpeningDocument(null);
+    }
+  }
+
+  async function reviewEmi(status) {
+    try {
+      await reviewEmiDocuments({ orderId, status }).unwrap();
+      addToast("EMI document review saved.", "success");
+    } catch (error) {
+      addToast(apiErrorMessage(error, "Could not save the document review."), "error");
+    }
+  }
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const userRole = user?.role || "customer";
   const isAdmin = user?.role === "admin";
   const isEmployee = user?.role === "employee";
   const isDealer = user?.role === "dealer";
@@ -265,7 +301,7 @@ export default function OrderDetail() {
     }
 
     try {
-      await updateOrderStatus({ orderId, status: newStatus }).unwrap();
+      await updateOrderStatus({ orderId, status: newStatus, isDealer }).unwrap();
       addToast("Order status updated successfully!", "success");
       setShowStatusModal(false);
       setNewStatus("");
@@ -379,7 +415,7 @@ export default function OrderDetail() {
 
   return (
     <>
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       <div className="min-h-screen bg-gray-50">
         <div className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
@@ -469,7 +505,7 @@ export default function OrderDetail() {
 
                   {(isAdmin || isEmployee) && (
                     <div className="mt-4 flex flex-wrap gap-3">
-                      {(order.paymentMethod === "QR" || order.paymentMethod === "EMI") && order.paymentImage && (
+                      {order.paymentMethod === "QR" && order.paymentImage && (
                         <button
                           onClick={() => setShowPaymentProof(true)}
                           className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-black"
@@ -503,6 +539,15 @@ export default function OrderDetail() {
                         Update Status
                       </button>
                     </div>
+                  )}
+                  {isDealer && (
+                    <button type="button" onClick={() => {
+                      setNewStatus(order.status);
+                      setShowStatusModal(true);
+                    }} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                      <Truck className="h-4 w-4" />
+                      Update Status
+                    </button>
                   )}
                 </div>
               </div>
@@ -558,69 +603,39 @@ export default function OrderDetail() {
                 </div>
               </div>
 
-              {order.paymentMethod === "EMI" && (
-                <div className="rounded-2xl border bg-white p-6 shadow-sm">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">EMI Documents</h2>
-                      <p className="text-sm text-gray-500">
-                        Aadhaar, PAN, and supporting documents uploaded with the EMI request.
-                      </p>
-                    </div>
-                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                      order.emiDocuments?.status === "verified"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : order.emiDocuments?.status === "rejected"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-slate-100 text-slate-700"
-                    }`}>
-                      {getLabel(order.emiDocuments?.status || "pending")}
+              {(isAdmin || isEmployee) && order.paymentMethod === "EMI" && order.emiDocuments && (
+                <section className="rounded-2xl border bg-white p-6 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-lg font-semibold text-gray-900">EMI documents</h2>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium">
+                      {getLabel(order.emiDocuments.status)}
                     </span>
                   </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <DocumentCard
-                      title="Aadhaar Front"
-                      preview={order.emiDocuments?.aadhaarFront || order.addharfrontimage}
-                      uploadedAt={order.emiDocuments?.uploadedAt || order.createdAt}
-                      onPreview={() => setEmiPreview({
-                        title: "Aadhaar Front",
-                        url: order.emiDocuments?.aadhaarFront || order.addharfrontimage,
-                      })}
-                    />
-                    <DocumentCard
-                      title="Aadhaar Back"
-                      preview={order.emiDocuments?.aadhaarBack || order.aadharbackimage}
-                      uploadedAt={order.emiDocuments?.uploadedAt || order.createdAt}
-                      onPreview={() => setEmiPreview({
-                        title: "Aadhaar Back",
-                        url: order.emiDocuments?.aadhaarBack || order.aadharbackimage,
-                      })}
-                    />
-                    <DocumentCard
-                      title="PAN Card"
-                      preview={order.emiDocuments?.panCard || order.pancardimage}
-                      uploadedAt={order.emiDocuments?.uploadedAt || order.createdAt}
-                      onPreview={() => setEmiPreview({
-                        title: "PAN Card",
-                        url: order.emiDocuments?.panCard || order.pancardimage,
-                      })}
-                    />
-                    {Array.isArray(order.emiDocuments?.otherDocuments) &&
-                      order.emiDocuments.otherDocuments.map((doc, index) => (
-                        <DocumentCard
-                          key={`${doc.url}-${index}`}
-                          title={doc.name || `Other Document ${index + 1}`}
-                          preview={doc.url}
-                          uploadedAt={order.emiDocuments?.uploadedAt || order.createdAt}
-                          onPreview={() => setEmiPreview({
-                            title: doc.name || `Other Document ${index + 1}`,
-                            url: doc.url,
-                          })}
-                        />
-                      ))}
+                  {order.emiDocuments.reviewedByName && (
+                    <p className="mt-2 text-sm text-gray-700">
+                      {order.emiDocuments.status === "verified" ? "Verified" : "Rejected"} by {order.emiDocuments.reviewedByName}
+                      {order.emiDocuments.reviewedAt && ` on ${new Date(order.emiDocuments.reviewedAt).toLocaleDateString()}`}
+                    </p>
+                  )}
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {order.emiDocuments.files.map((file) => (
+                      <button type="button" key={file.id} disabled={Boolean(openingDocument)}
+                        onClick={() => openEmiDocument(file)}
+                        className="rounded-lg border px-4 py-3 text-left text-sm font-medium hover:bg-slate-50 disabled:opacity-50">
+                        {openingDocument === file.id ? "Opening…" : file.name}
+                      </button>
+                    ))}
                   </div>
-                </div>
+                  {!order.emiDocuments.files.length && <p className="mt-3 text-sm text-gray-500">No documents uploaded.</p>}
+                  {order.emiDocuments.status === "pending" && order.emiDocuments.files.length > 0 && (
+                    <div className="mt-5 flex gap-3">
+                      <button type="button" disabled={reviewingEmi} onClick={() => reviewEmi("verified")}
+                        className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Verify documents</button>
+                      <button type="button" disabled={reviewingEmi} onClick={() => reviewEmi("rejected")}
+                        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-50">Reject documents</button>
+                    </div>
+                  )}
+                </section>
               )}
 
               <div className="rounded-2xl border bg-white p-6 shadow-sm">
@@ -1040,7 +1055,7 @@ export default function OrderDetail() {
                 <div className="flex items-center gap-2">
                   <a
                     href={emiPreview.url}
-                    download
+                    download={emiPreview.title}
                     target="_blank"
                     rel="noreferrer"
                     className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -1048,6 +1063,7 @@ export default function OrderDetail() {
                     Download
                   </a>
                   <button
+                    aria-label="Close document preview"
                     onClick={() => setEmiPreview(null)}
                     className="rounded-lg p-2 hover:bg-gray-100"
                   >
@@ -1056,11 +1072,11 @@ export default function OrderDetail() {
                 </div>
               </div>
               <div className="flex flex-1 items-center justify-center overflow-y-auto bg-gray-50 p-4">
-                <img
-                  src={emiPreview.url}
-                  alt={emiPreview.title}
-                  className="max-h-[70vh] w-full rounded-xl object-contain"
-                />
+                {emiPreview.type === "application/pdf" ? (
+                  <iframe src={emiPreview.url} title={emiPreview.title} className="h-[65vh] w-full rounded-xl" />
+                ) : (
+                  <img src={emiPreview.url} alt={emiPreview.title} className="max-h-[70vh] w-full rounded-xl object-contain" />
+                )}
               </div>
             </div>
           </div>
@@ -1349,58 +1365,6 @@ function SummaryRow({ label, value, tone = "text-gray-700" }) {
     <div className="flex items-center justify-between">
       <span className="text-gray-600">{label}</span>
       <span className={`font-medium ${tone}`}>{value}</span>
-    </div>
-  );
-}
-
-function DocumentCard({ title, preview, uploadedAt, onPreview }) {
-  return (
-    <div className="rounded-2xl border bg-gray-50 p-4">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold text-gray-900">{title}</p>
-          <p className="text-xs text-gray-500">
-            Uploaded: {formatDateTime(uploadedAt).full}
-          </p>
-        </div>
-        <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${
-          preview ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"
-        }`}>
-          {preview ? "Available" : "Missing"}
-        </span>
-      </div>
-
-      <div className="mb-3 overflow-hidden rounded-xl border bg-white">
-        {preview ? (
-          <img src={preview} alt={title} className="h-40 w-full object-cover" />
-        ) : (
-          <div className="flex h-40 items-center justify-center text-sm text-gray-500">
-            No document uploaded
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled={!preview}
-          onClick={onPreview}
-          className="flex-1 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Preview
-        </button>
-        {preview && (
-          <a
-            href={preview}
-            download
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Download
-          </a>
-        )}
-      </div>
     </div>
   );
 }

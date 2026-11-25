@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -21,7 +22,7 @@ const DateRangeFilter = ({
     if (!fromDate || !toDate) return;
 
     if (new Date(fromDate) > new Date(toDate)) {
-      alert("From date cannot be greater than To date");
+      toast.warning("The start date must be on or before the end date.");
       return;
     }
 

@@ -10,7 +10,6 @@ import {
   Info,
 } from "lucide-react";
 import EmployeeModal from "../../components/employee/EmployeeModal";
-import { ToastContainer } from "../Toast/Toast";
 import { useToast } from "../../hooks/useToast";
 
 const EmployeeList = () => {
@@ -18,7 +17,7 @@ const EmployeeList = () => {
   const [showModal, setShowModal] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -206,7 +205,7 @@ const EmployeeList = () => {
 
   return (
     <>
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       <div className="py-4 px-6 bg-gray-50 h-screen overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

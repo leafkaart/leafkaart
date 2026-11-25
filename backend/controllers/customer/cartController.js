@@ -1,4 +1,5 @@
 const Cart = require("../../models/Cart");
+const { approvedCatalogFor } = require("../../utils/productVisibility");
 const Product = require("../../models/Product");
 
 exports.addToCart = async (req, res) => {
@@ -12,7 +13,7 @@ exports.addToCart = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({ _id: productId, ...approvedCatalogFor(req.user) });
 
     if (!product) {
       return res.status(404).json({
@@ -97,11 +98,12 @@ exports.addToCart = async (req, res) => {
 exports.getCart = async (req, res) => {
   try {
     const cart = await Cart.findOne({ user: req.user._id })
-      .populate("items.product");
+      .populate({ path: "items.product", match: approvedCatalogFor(req.user) });
 
+    const visibleItems = cart?.items.filter((item) => item.product) || [];
     return res.json({
       success: true,
-      cart: cart || {
+      cart: cart ? { ...cart.toJSON(), items: visibleItems, totalAmount: visibleItems.reduce((sum, item) => sum + item.priceAt * item.qty, 0) } : {
         items: [],
         totalAmount: 0,
         currency: "INR",
@@ -144,7 +146,7 @@ exports.updateItem = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({ _id: productId, ...approvedCatalogFor(req.user) });
 
     if (!product || !product.isActive || !product.isApproved) {
       return res.status(400).json({

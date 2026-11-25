@@ -1,5 +1,6 @@
+const { notifyCustomerOfDispatch } = require("../../utils/orderDispatch");
 const Order = require("../../models/Order");
-const { syncOrderInventory } = require("../../utils/orderInventory");
+const { runOrderChange } = require("../../utils/orderInventory");
 const { appendOrderActivity } = require("../../utils/orderActivity");
 
 const STATUS_LABELS = {
@@ -77,36 +78,35 @@ exports.updateStatus = async (req, res) => {
       });
     }
 
-    // Find assigned order
-    const order = await Order.findOne({ 
-      _id: req.params.id, 
-      assignedTo: req.user._id 
-    });
+    const order = await runOrderChange(async (session, syncInventory) => {
+      const order = await Order.findOne({
+        _id: req.params.id,
+        assignedTo: req.user._id,
+      }).setOptions({ strictQuery: false }).session(session);
+      if (!order) return null;
 
+      await syncInventory(order, status);
+      if (order.status !== status) {
+        order.status = status;
+        if (status === "dispatched") order.dispatchPending = true;
+        appendOrderActivity(order, {
+          action: getStatusLabel(status),
+          remarks: notes || `Status updated to ${status}`,
+          actor: req.user,
+          status,
+        });
+      }
+      if (order.isModified()) await order.save({ session });
+      return order;
+    });
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found or not assigned to this employee"
-      });
+      return res.status(404).json({ success: false, message: "Order not found or not assigned to this employee" });
     }
-
-    // Update status
-    order.status = status;
-    await syncOrderInventory(order, status);
-
-    // Add audit entry
-    appendOrderActivity(order, {
-      action: getStatusLabel(status),
-      remarks: notes || `Status updated to ${status}`,
-      actor: req.user,
-      status,
-    });
-
-    await order.save();
+    if (status === "dispatched") notifyCustomerOfDispatch(order).catch((error) => console.error("Dispatch delivery pending", error.message));
 
     res.json({ success: true, message: "Order status updated", order });
 
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(err.status || 500).json({ success: false, message: err.status ? err.message : "Could not update the order status." });
   }
 };

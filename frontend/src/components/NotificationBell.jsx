@@ -53,8 +53,11 @@ const NotificationBell = () => {
   return (
     <div className="relative">
       <button
+        type="button"
+        aria-label="Notifications"
+        aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        className="relative z-20 p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
       >
         <Bell className="w-6 h-6" />
         {unreadCount > 0 && (
@@ -85,10 +88,11 @@ const NotificationBell = () => {
             ) : (
               <div className="divide-y">
                 {notifications.map((notification) => (
-                  <div
+                  <button
+                    type="button"
                     key={notification._id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                    className={`block w-full p-4 text-left hover:bg-gray-50 transition-colors ${
                       !notification.isRead ? "bg-blue-50" : ""
                     }`}
                   >
@@ -98,7 +102,7 @@ const NotificationBell = () => {
                     <p className="text-xs text-gray-500 mt-1">
                       {new Date(notification.createdAt).toLocaleDateString()}
                     </p>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

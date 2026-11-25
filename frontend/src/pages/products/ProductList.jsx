@@ -1,10 +1,7 @@
 import { useState } from "react";
 import {
-  useCreateProductMutation,
   useGetCategoriesQuery,
-  useGetDealersQuery,
   useGetProductsQuery,
-  useGetSubCategoriesQuery,
   useApproveProductMutation,
   useRejectProductMutation,
   useGetSubCategoriesByCategoryQuery,
@@ -20,17 +17,18 @@ import {
 } from "lucide-react";
 import AddProductPage from "./AddProductPage";
 import { useNavigate } from "react-router-dom";
-import { ToastContainer } from "../Toast/Toast"; // Adjust path as needed
 import { useToast } from "../../hooks/useToast"; // Adjust path as needed
 
 function ProductList() {
   const [search, setSearch] = useState("");
+  const [view, setView] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role;
   const isDealer = user?.role === "dealer";
+  const isAdmin = userRole === "admin";
   const navigate = useNavigate();
   // New product form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -47,9 +45,6 @@ function ProductList() {
     });
   const subCategories = subCategoriesResponse || [];
 
-  const { data: dealersResponse, isLoading: dealersLoading } =
-    useGetDealersQuery();
-  const dealers = dealersResponse?.data ?? [];
 
   const {
     data: products = [],
@@ -59,11 +54,12 @@ function ProductList() {
     categoryId: selectedCategory,
     subCategoryId: selectedSubCategory,
     search,
+    view,
   });
 
-  const [approveProduct, { isLoading: isApproving }] =
+  const [approveProduct] =
     useApproveProductMutation();
-  const [rejectProduct, { isLoading: isRejecting }] =
+  const [rejectProduct] =
     useRejectProductMutation();
 
   const sortedProducts = [...products].sort((a, b) => {
@@ -119,16 +115,14 @@ function ProductList() {
       <AddProductPage
         onBack={() => setShowAddForm(false)}
         categories={categories}
-        dealers={dealers}
-        isDealer={isDealer}
-        user={user}
+        isAdmin={isAdmin}
       />
     );
   }
 
   return (
     <>
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       <div className="h-screen bg-gray-50 flex flex-col">
         <main className=" px-6 py-2 flex-1 flex flex-col overflow-hidden">
           {/* Title Bar with Search, Filter, Add Product */}
@@ -136,6 +130,16 @@ function ProductList() {
             <h2 className="text-2xl font-bold text-gray-800">Product List</h2>
 
             <div className="flex items-center gap-3 flex-1 justify-end flex-wrap">
+              <select
+                aria-label="Product view"
+                value={view}
+                onChange={(event) => setView(event.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value="all">All products</option>
+                <option value="admin">Admin products only</option>
+                <option value="available">Available products</option>
+              </select>
               {/* Search */}
               <div className="relative max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -195,8 +199,7 @@ function ProductList() {
                 </div>
               )}
 
-              {/* Add Product Button - Hidden for Admin */}
-              {isDealer && (
+              {(isDealer || isAdmin) && (
                 <button
                   onClick={() => setShowAddForm(true)}
                   className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white px-6 py-3 rounded-lg font-medium transition shadow-sm"

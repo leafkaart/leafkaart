@@ -1,3 +1,5 @@
+const { notifyCustomerOfDispatch } = require("../../utils/orderDispatch");
+const { runOrderChange } = require("../../utils/orderInventory");
 const Order = require('../../models/Order');
 const {
   getUserIdsByRoles,
@@ -58,26 +60,44 @@ exports.assignedOrders = async (req, res) => {
 // Dealer update order status
 exports.updateStatus = async (req, res) => {
   try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      "dealerAssign.dealer": req.user._id,
+    const { status } = req.body || {};
+    if (!Order.schema.path("status").enumValues.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid order status" });
+    }
+    const result = await runOrderChange(async (session, syncInventory) => {
+      const order = await Order.findOne({
+        _id: req.params.id,
+        "dealerAssign.dealer": req.user._id,
+      }).session(session);
+      if (!order) return null;
+
+      await syncInventory(order, status);
+      const changed = order.status !== status;
+      if (changed) {
+        order.status = status;
+        if (status === "dispatched") order.dispatchPending = true;
+        appendOrderActivity(order, {
+          action: getStatusLabel(status),
+          remarks: `Status updated to ${status}`,
+          actor: req.user,
+          status,
+        });
+      }
+      if (order.isModified()) await order.save({ session });
+      return { order, changed };
     });
+    if (!result) return res.status(404).json({ success: false, message: "Order not found" });
+    const { order, changed } = result;
 
-    if (!order)
-      return res.status(404).json({ success: false, message: "Order not found" });
+    if (status === "dispatched") {
+      notifyCustomerOfDispatch(order).catch((error) => console.error("Dispatch delivery pending", error.message));
+      return res.json({ success: true, order });
+    }
 
-    order.status = req.body.status;
-    appendOrderActivity(order, {
-      action: getStatusLabel(req.body.status),
-      remarks: `Status updated to ${req.body.status}`,
-      actor: req.user,
-      status: req.body.status,
-    });
-
-    await order.save();
+    if (!changed) return res.json({ success: true, order });
 
     const adminAndEmployeeIds = await getUserIdsByRoles(["admin", "employee"]);
-    const recipients = [...adminAndEmployeeIds, order.user?.toString()];
+    const recipients = adminAndEmployeeIds;
     const statusMessage =
       req.body.status === "processing"
         ? `Order ${order.orderNumber} accepted by dealer`
@@ -93,6 +113,6 @@ exports.updateStatus = async (req, res) => {
     res.json({ success: true, order });
 
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(err.status || 500).json({ success: false, message: err.status ? err.message : "Could not update the order status." });
   }
 };

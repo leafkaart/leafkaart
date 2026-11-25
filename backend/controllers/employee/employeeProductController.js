@@ -1,3 +1,6 @@
+const { STAFF_PRODUCT } = require("../../utils/productVisibility");
+const { syncLowStockAlert } = require("../../utils/lowStock");
+const { updateProduct } = require("../dealer/dealerProductController");
 const Product = require('../../models/Product');
 const { appendProductActivity } = require("../../utils/productActivity");
 
@@ -24,12 +27,16 @@ exports.createProduct = async (req, res) => {
     }
 
     const payload = {
-      ...req.body,
-      employee: req.user._id,
-      dealer: req.body.dealer || null
+      title,
+      customerPrice: price,
+      categoryId: category,
+      employeeId: req.user._id
     };
 
-    const product = await Product.create(payload);
+    const product = new Product(payload);
+    appendProductActivity(product, { action: "Product Created", actor: req.user });
+    await product.save();
+    await syncLowStockAlert(product);
     res.json({ success: true, product });
 
   } catch (err) {
@@ -40,7 +47,7 @@ exports.createProduct = async (req, res) => {
 // LIST PRODUCTS (Employee Only)
 exports.listProducts = async (req, res) => {
   try {
-    const products = await Product.find({ employee: req.user._id })
+    const products = await Product.find({ $or: [{ employeeId: req.user._id }, STAFF_PRODUCT] })
       .sort({ createdAt: -1 });
 
     res.json({ success: true, products });
@@ -55,7 +62,7 @@ exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findOne({
       _id: req.params.id,
-      employee: req.user._id
+      $or: [{ employeeId: req.user._id }, STAFF_PRODUCT]
     });
 
     if (!product) {
@@ -72,47 +79,7 @@ exports.getProduct = async (req, res) => {
   }
 };
 
-// UPDATE PRODUCT
-exports.updateProduct = async (req, res) => {
-  try {
-    const product = await Product.findOne({ _id: req.params.id });
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found"
-      });
-    }
-
-    const previousSnapshot = product.toObject();
-
-    Object.entries(req.body || {}).forEach(([key, value]) => {
-      if (key === "slug") return;
-      product[key] = value;
-    });
-
-    const changedFields = Object.entries(req.body || {}).filter(([key, value]) => {
-      if (key === "slug") return false;
-      return String(previousSnapshot[key] ?? "") !== String(value ?? "");
-    });
-
-    if (changedFields.length) {
-      appendProductActivity(product, {
-        action: "Product Updated",
-        actor: req.user,
-        previousValue: Object.fromEntries(changedFields.map(([key]) => [key, previousSnapshot[key]])),
-        newValue: Object.fromEntries(changedFields.map(([key, value]) => [key, value])),
-        remarks: `Updated ${changedFields.map(([key]) => key).join(", ")}`,
-      });
-      await product.save();
-    }
-
-    res.json({ success: true, product });
-
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+exports.updateProduct = updateProduct;
 
 exports.updateCommission = async (req, res) => {
   try {
@@ -189,7 +156,8 @@ exports.deleteProduct = async (req, res) => {
   try {
     const product = await Product.findOneAndDelete({
       _id: req.params.id,
-      employee: req.user._id
+      employeeId: req.user._id,
+      createdByRole: { $not: STAFF_PRODUCT.createdByRole }
     });
 
     if (!product) {

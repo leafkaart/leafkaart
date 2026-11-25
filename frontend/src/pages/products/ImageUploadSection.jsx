@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState } from "react";
 import { Upload, X } from "lucide-react";
 
@@ -6,10 +7,18 @@ function ImageUploadSection({ images, setImages, maxImages = 6 }) {
 
   const handleFiles = (files) => {
     const fileArray = Array.from(files);
-    const validFiles = fileArray.filter(file => file.type.startsWith('image/'));
+    if (fileArray.some((file) => !['image/jpeg', 'image/png'].includes(file.type))) {
+      toast.error('Upload PNG or JPEG product images.');
+      return;
+    }
+    if (fileArray.some((file) => file.size > 10 * 1024 * 1024)) {
+      toast.error('Each product image must be 10 MB or smaller.');
+      return;
+    }
+    const validFiles = fileArray;
     
     if (images.length + validFiles.length > maxImages) {
-      alert(`You can only upload maximum ${maxImages} images`);
+      toast.warning(`Upload at most ${maxImages} images.`);
       return;
     }
 
@@ -86,7 +95,7 @@ function ImageUploadSection({ images, setImages, maxImages = 6 }) {
         <input
           type="file"
           multiple
-          accept="image/*"
+          accept="image/jpeg,image/png"
           onChange={handleChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           disabled={images.length >= maxImages}

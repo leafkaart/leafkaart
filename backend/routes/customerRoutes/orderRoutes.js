@@ -3,7 +3,8 @@ const { createOrder, listOrders, getOrder, requestReturnOrder} = require('../../
 const auth = require('../../middlewares/authMiddleware');
 const router = express.Router();
 
-router.post('/createOrder', auth, createOrder);
+const { customerMiddleware } = require('../../middlewares/roleMiddleware');
+router.post('/createOrder', auth, customerMiddleware, createOrder);
 router.get('/listOrders', auth, listOrders);
 router.get('/getOrder/:id', auth, getOrder);
 router.post("/return/:id", auth, requestReturnOrder);

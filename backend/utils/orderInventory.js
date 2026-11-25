@@ -1,41 +1,39 @@
+const Order = require("../models/Order");
 const Product = require("../models/Product");
+const { syncLowStockAlert } = require("./lowStock");
 
 const STOCK_DEDUCT_STATUSES = new Set(["delivered"]);
-const STOCK_RESTORE_STATUSES = new Set(["cancelled", "returned"]);
+const STOCK_RESTORE_STATUSES = new Set(["cancelled", "returned", "refunded"]);
 
-async function syncOrderInventory(order, nextStatus) {
-  const status = String(nextStatus || "").toLowerCase();
-  const currentState = order.inventoryStatus?.state || "none";
+async function runOrderChange(work) {
+  const result = await Order.db.transaction(async (session) => {
+    const changedProducts = new Set();
+    async function syncInventory(order, status) {
+      const state = order.inventoryStatus?.state || "none";
+      const deduct = STOCK_DEDUCT_STATUSES.has(status) && state !== "deducted";
+      const restore = STOCK_RESTORE_STATUSES.has(status) && state === "deducted";
+      if ((!deduct && !restore) || !order.items?.length) return;
 
-  if (!order?.items?.length || !status) {
-    return false;
-  }
-
-  const shouldDeduct =
-    STOCK_DEDUCT_STATUSES.has(status) && currentState !== "deducted";
-  const shouldRestore =
-    STOCK_RESTORE_STATUSES.has(status) && currentState === "deducted";
-
-  if (!shouldDeduct && !shouldRestore) {
-    return false;
-  }
-
-  for (const item of order.items) {
-    const qty = Number(item.qty || 0);
-    if (!qty) continue;
-
-    await Product.findByIdAndUpdate(item.product, {
-      $inc: { stock: shouldDeduct ? -qty : qty },
-    });
-  }
-
-  order.inventoryStatus = {
-    state: shouldDeduct ? "deducted" : "restored",
-    status,
-    updatedAt: new Date(),
-  };
-
-  return true;
+      for (const item of order.items) {
+        const quantity = Number(item.qty);
+        if (!Number.isSafeInteger(quantity) || quantity < 1) continue;
+        const result = await Product.updateOne(
+          { _id: item.product, ...(deduct && { stock: { $gte: quantity } }) },
+          { $inc: { stock: deduct ? -quantity : quantity } },
+          { session }
+        );
+        if (deduct && !result.matchedCount) {
+          throw Object.assign(new Error(`Insufficient stock for ${item.title}`), { status: 409 });
+        }
+        if (result.matchedCount) changedProducts.add(String(item.product));
+      }
+      order.inventoryStatus = { state: deduct ? "deducted" : "restored", status, updatedAt: new Date() };
+    }
+    const value = await work(session, syncInventory);
+    return { value, changedProducts };
+  });
+  for (const id of result.changedProducts) await syncLowStockAlert({ _id: id });
+  return result.value;
 }
 
-module.exports = { syncOrderInventory };
+module.exports = { runOrderChange };

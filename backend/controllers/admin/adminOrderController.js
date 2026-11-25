@@ -1,9 +1,15 @@
 const mongoose = require("mongoose");
 const Order = require("../../models/Order");
+const User = require("../../models/User");
 const { sendEmail } = require("../../utils/emailService");
 const dealerTemplate = require("../../utils/dealerAssignedTemplate");
 const customerTemplate = require("../../utils/customerAssignedTemplate");
-const { syncOrderInventory } = require("../../utils/orderInventory");
+const { Readable } = require("node:stream");
+const { pipeline } = require("node:stream/promises");
+const { listEmiDocuments, documentSource } = require("../../utils/emiDocuments");
+const { createAndSendNotifications } = require("../../utils/notificationHelper");
+const { notifyCustomerOfDispatch } = require("../../utils/orderDispatch");
+const { runOrderChange } = require("../../utils/orderInventory");
 const { appendOrderActivity } = require("../../utils/orderActivity");
 
 const ALLOWED_STATUSES = [
@@ -113,8 +119,9 @@ exports.getOrder = async (req, res) => {
       });
     }
 
-    const order = await Order.findById(id)
-      .populate("user", "name email phone")
+    const scope = req.user.role === "dealer" ? { "dealerAssign.dealer": req.user._id } : {};
+    const order = await Order.findOne({ _id: id, ...scope })
+      .populate("user", "name email mobile")
       .populate("address")
       .populate("items.product", "title slug sku price images")
       .populate("dealerAssign.dealer", "name email")
@@ -133,7 +140,18 @@ exports.getOrder = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: order,
+      data: {
+        ...order.toJSON(),
+        ...(["admin", "employee"].includes(req.user.role) && order.paymentMethod === "EMI" && {
+          emiDocuments: {
+            status: order.emiDocuments?.status || "pending",
+            uploadedAt: order.emiDocuments?.uploadedAt || order.createdAt,
+            reviewedByName: order.emiDocuments?.reviewedByName,
+            reviewedAt: order.emiDocuments?.reviewedAt,
+            files: listEmiDocuments(order).map(({ id, name }) => ({ id, name })),
+          },
+        }),
+      },
     });
   } catch (err) {
     console.error("getOrder error:", err);
@@ -163,25 +181,27 @@ exports.updateOrderStatus = async (req, res) => {
       });
     }
 
-    const order = await Order.findById(id);
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
+    const order = await runOrderChange(async (session, syncInventory) => {
+      const order = await Order.findById(id).session(session);
+      if (!order) return null;
 
-    order.status = status;
-    await syncOrderInventory(order, status);
-
-    appendOrderActivity(order, {
-      action: getStatusLabel(status),
-      remarks: `Status updated to ${getStatusLabel(status)}`,
-      actor: req.user,
-      status,
+      await syncInventory(order, status);
+      if (order.status !== status) {
+        order.status = status;
+        if (status === "dispatched") order.dispatchPending = true;
+        appendOrderActivity(order, {
+          action: getStatusLabel(status),
+          remarks: `Status updated to ${getStatusLabel(status)}`,
+          actor: req.user,
+          status,
+        });
+      }
+      if (order.isModified()) await order.save({ session });
+      return order;
     });
 
-    await order.save();
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (status === "dispatched") notifyCustomerOfDispatch(order).catch((error) => console.error("Dispatch delivery pending", error.message));
 
     const updatedOrder = await Order.findById(id)
       .populate("user", "name email phone")
@@ -200,9 +220,9 @@ exports.updateOrderStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("updateOrderStatus error:", err);
-    return res.status(500).json({
+    return res.status(err.status || 500).json({
       success: false,
-      message: "Server error",
+      message: err.status ? err.message : "Could not update the order status.",
     });
   }
 };
@@ -356,6 +376,9 @@ exports.assignOrderToDealer = async (req, res) => {
       });
     }
 
+    if (!await User.exists({ _id: dealerId, role: "dealer" })) {
+      return res.status(404).json({ success: false, message: "Dealer not found" });
+    }
     order.dealerAssign = {
       dealer: dealerId,
       assignedBy: req.user._id,
@@ -376,6 +399,14 @@ exports.assignOrderToDealer = async (req, res) => {
       .populate("dealerAssign.dealer", "name email storeName")
       .populate("dealerAssign.assignedBy", "name email")
       .populate("user", "name email mobile");
+
+    await createAndSendNotifications({
+      userIds: [dealerId],
+      type: "order",
+      orderId: order._id,
+      message: `Order ${order.orderNumber} was assigned to you.`,
+      eventKey: `order-assigned:${order._id}:${order.dealerAssign.assignedAt.getTime()}`,
+    }).catch((error) => console.error("Dealer assignment notification failed", error));
 
     if (updatedOrder.dealerAssign.dealer.email) {
       await sendEmail({
@@ -472,88 +503,49 @@ exports.handleReturnRequest = async (req, res) => {
       });
     }
 
-    const order = await Order.findById(orderId);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // ✅ Check if request exists
-    if (
-      !order.returnRequest ||
-      order.returnRequest.status !== "requested"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "No pending return/replace request",
-      });
-    }
-
-    const requestType = order.returnRequest.type; // return / replace
-
-    // ✅ Update request
-    order.returnRequest.status = status;
-    order.returnRequest.adminMessage = message;
-    order.returnRequest.updatedAt = new Date();
-
-    // ✅ APPROVED LOGIC
-    if (status === "approved") {
-
-      // 🔁 RETURN FLOW
-      if (requestType === "return") {
-        order.status = "refunded";
-        await syncOrderInventory(order, order.status);
+    const requestType = await runOrderChange(async (session, syncInventory) => {
+      const order = await Order.findById(orderId).session(session);
+      if (!order) throw Object.assign(new Error("Order not found"), { status: 404 });
+      if (order.returnRequest?.status !== "requested") {
+        throw Object.assign(new Error("No pending return/replace request"), { status: 400 });
       }
 
-      // 🔁 CANCEL FLOW
-      if (requestType === "cancel") {
-        order.status = "cancelled";
-        await syncOrderInventory(order, order.status);
+      const requestType = order.returnRequest.type; // return / replace
+
+      // ✅ Update request
+      order.returnRequest.status = status;
+      order.returnRequest.adminMessage = message;
+      order.returnRequest.updatedAt = new Date();
+
+      if (status === "approved") {
+        order.status = { return: "refunded", cancel: "cancelled", replace: "processing" }[requestType] || order.status;
+        await syncInventory(order, order.status);
       }
 
-      // 🔁 REPLACE FLOW
-      if (requestType === "replace") {
-        order.status = "processing";
-
-        // 👉 Optional: Create replacement order (advanced)
-        /*
-        const newOrder = await Order.create({
-          ...copy required fields from old order
-        });
-        */
-      }
-    }
-
-    // ❌ REJECTED LOGIC → no status change
-    if (status === "rejected") {
-      // keep order as it is (usually delivered)
-    }
-
-    // ✅ Timeline update
-    const actionPerformed =
-      status === "approved"
-        ? requestType === "cancel"
-          ? "Cancel Approved"
+      // ✅ Timeline update
+      const actionPerformed =
+        status === "approved"
+          ? requestType === "cancel"
+            ? "Cancel Approved"
+            : requestType === "return"
+            ? "Refund Approved"
+            : "Approve Replacement"
+          : requestType === "cancel"
+          ? "Cancel Rejected"
           : requestType === "return"
-          ? "Refund Approved"
-          : "Approve Replacement"
-        : requestType === "cancel"
-        ? "Cancel Rejected"
-        : requestType === "return"
-        ? "Refund Rejected"
-        : "Reject Replacement";
+          ? "Refund Rejected"
+          : "Reject Replacement";
 
-    appendOrderActivity(order, {
-      action: actionPerformed,
-      remarks: message || `${requestType} request ${status}`,
-      actor: req.user,
-      status: order.status,
+      appendOrderActivity(order, {
+        action: actionPerformed,
+        remarks: message || `${requestType} request ${status}`,
+        actor: req.user,
+        status: order.status,
+      });
+
+      await order.save({ session });
+      return requestType;
     });
-
-    await order.save();
 
     return res.json({
       success: true,
@@ -562,9 +554,69 @@ exports.handleReturnRequest = async (req, res) => {
 
   } catch (err) {
     console.error("handleReturnRequest error:", err);
-    return res.status(500).json({
+    return res.status(err.status || 500).json({
       success: false,
-      message: err.message,
+      message: err.status ? err.message : "Could not update the return request.",
     });
+  }
+};
+
+
+exports.getEmiDocument = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+    const order = await Order.findOne({ _id: req.params.id, paymentMethod: "EMI" });
+    const file = order && listEmiDocuments(order).find(({ id }) => id === req.params.documentId);
+    const source = file && documentSource(file.reference);
+    if (!source) return res.status(404).json({ message: "Document not found" });
+
+    const upstream = await fetch(source.url, { redirect: "error", signal: AbortSignal.timeout(15000) });
+    if (!upstream.ok || !upstream.body) {
+      return res.status(502).json({ message: "The document could not be opened" });
+    }
+    res.set({
+      "Content-Type": source.contentType,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    });
+    const extension = source.contentType === "application/pdf" ? "pdf" :
+      source.contentType === "image/png" ? "png" : "jpg";
+    res.attachment(`${file.id}.${extension}`);
+    await pipeline(Readable.fromWeb(upstream.body), res);
+  } catch (error) {
+    console.error("Could not open EMI document", error);
+    if (!res.headersSent && !res.destroyed) res.status(502).json({ message: "The document could not be opened" });
+  }
+};
+
+exports.reviewEmiDocuments = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+    const { status } = req.body || {};
+    if (!["verified", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Select verified or rejected" });
+    }
+    const order = await Order.findOne({ _id: req.params.id, paymentMethod: "EMI" });
+    if (!order) return res.status(404).json({ message: "EMI order not found" });
+    if (!listEmiDocuments(order).length) return res.status(400).json({ message: "No documents are available to review" });
+
+    const result = await Order.updateOne(
+      { _id: order._id, "emiDocuments.status": { $nin: ["verified", "rejected"] } },
+      { $set: {
+        "emiDocuments.status": status,
+        "emiDocuments.reviewedBy": req.user._id,
+        "emiDocuments.reviewedByName": req.user.name,
+        "emiDocuments.reviewedAt": new Date(),
+      } }
+    );
+    if (!result.modifiedCount) return res.status(409).json({ message: "These documents have already been reviewed" });
+    res.json({ success: true, message: "EMI document review saved" });
+  } catch (error) {
+    console.error("Could not review EMI documents", error);
+    res.status(500).json({ message: "Could not save the document review" });
   }
 };

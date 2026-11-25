@@ -1,7 +1,4 @@
-import { useState } from "react";
-import { configureStore } from "@reduxjs/toolkit";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { Provider, useDispatch, useSelector } from "react-redux";
 
 // RTK Query API
 const productsApi = createApi({
@@ -61,11 +58,12 @@ const productsApi = createApi({
     }),
     // Get products with filters
     getProducts: builder.query({
-      query: ({ categoryId, subCategoryId, search }) => {
+      query: ({ categoryId, subCategoryId, search, view }) => {
         const params = new URLSearchParams();
         if (categoryId) params.append("categoryId", categoryId);
         if (subCategoryId) params.append("subCategoryId", subCategoryId);
         if (search) params.append("search", search);
+        if (view) params.append("view", view);
 
         return {
           url: "/dealer/products/listProducts",
@@ -127,10 +125,10 @@ const productsApi = createApi({
 
     // Create new product
     createProduct: builder.mutation({
-      query: (product) => ({
-        url: "/dealer/products/createProduct",
+      query: ({ body, isAdmin }) => ({
+        url: isAdmin ? "/admin/products/createProduct" : "/dealer/products/createProduct",
         method: "POST",
-        body: product,
+        body,
       }),
       invalidatesTags: ["Products"],
     }),

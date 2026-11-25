@@ -1,18 +1,19 @@
 import { useState } from "react";
-import { ChevronLeft, Plus, CheckCircle } from "lucide-react";
+import { ChevronLeft, Plus } from "lucide-react";
 import ImageUploadSection from "./ImageUploadSection";
 import { toast } from "react-toastify";
+import { apiErrorMessage } from "../../utils/apiError";
 
 import {
-  useGetSubCategoriesQuery,
   useCreateProductMutation,
   useGetSubCategoriesByCategoryQuery,
 } from "../../store/api/productsApi";
-function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
+function AddProductPage({ onBack, categories, isAdmin }) {
   const [formData, setFormData] = useState({
     categoryId: "",
     subCategoryId: "",
-    dealerId: isDealer ? user?._id : "",
+    isActive: true,
+    dealerVisible: true,
     title: "",
     shortDescription: "",
     warranty: "",
@@ -23,9 +24,6 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
     dealerPrice: "",
     stock: "",
   });
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState("success");
 
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,14 +36,8 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
   });
   const subcategories =
     subCategoriesError || !subcategoriesResponse ? [] : subcategoriesResponse;
-  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
+  const [createProduct] = useCreateProductMutation();
 
-  const showToastMessage = (message, type = "success") => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
   
 
   const handleInputChange = (e) => {
@@ -73,24 +65,26 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
     //console.log("Submitting formData:", formData);
     // Validation
     if (
-      !formData.title ||
+      !formData.title.trim() ||
       !formData.categoryId ||
       !formData.subCategoryId ||
-      !formData.dealerPrice
+      formData.dealerPrice === ""
     ) {
-      showToastMessage("Please fill all required fields", "error");
+      toast.error("Enter the product title, category, subcategory, and price.");
+      return;
+    }
+
+    if (!Number.isFinite(Number(formData.dealerPrice)) || Number(formData.dealerPrice) < 0 ||
+        formData.stock === "" || !Number.isSafeInteger(Number(formData.stock)) || Number(formData.stock) < 0) {
+      toast.error("Enter a non-negative price and a whole stock quantity.");
       return;
     }
 
     if (images.length === 0) {
-      showToastMessage("Please upload at least one product image", "error");
+      toast.error("Please upload at least one product image.");
       return;
     }
 
-    if (!isDealer && !formData.dealerId) {
-      alert("Please select a dealer");
-      return;
-    }
 
     setLoading(true);
 
@@ -116,20 +110,19 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
       const warranty = formData.warranty.trim();
       if (warranty) formDataToSend.append("warranty", warranty);
 
-      if (isDealer) {
-        formDataToSend.append("dealerId", user._id);
-      } else {
-        formDataToSend.append("dealerId", formData.dealerId);
+      if (isAdmin) {
+        formDataToSend.append("dealerVisible", formData.dealerVisible);
+        formDataToSend.append("isActive", formData.isActive);
       }
 
       // Append all images
-      images.forEach((img, index) => {
+      images.forEach((img) => {
         formDataToSend.append(`images`, img.file);
       });
 
       // API call
      // console.log("Sending formDataToSend:", formDataToSend);
-      const result = await createProduct(formDataToSend).unwrap();
+      const result = await createProduct({ body: formDataToSend, isAdmin }).unwrap();
 
 
       if (result.success) {
@@ -145,8 +138,7 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
         });
       }
     } catch (error) {
-      console.error("Error adding product:", error);
-      alert("Failed to add product. Please try again.");
+      toast.error(apiErrorMessage(error, "The product could not be added. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -169,7 +161,7 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
 
         {/* Form */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-4">
-          <form onSubmit={handleSubmit}>
+          <form noValidate onSubmit={handleSubmit}>
             {/* Image Upload Section */}
             <ImageUploadSection
               images={images}
@@ -342,26 +334,23 @@ function AddProductPage({ onBack, categories, dealers, isDealer, user }) {
                 </div>
               </div>
 
-              {/* Dealer Selection (Admin Only) */}
-              {!isDealer && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dealer *
-                  </label>
-                  <select
-                    name="dealerId"
-                    value={formData.dealerId}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Dealer</option>
-                    {dealers.map((dealer) => (
-                      <option key={dealer._id} value={dealer._id}>
-                        {dealer.name}
-                      </option>
-                    ))}
-                  </select>
+              {isAdmin && (
+                <div className="flex flex-wrap gap-5">
+                  {[
+                    ["isActive", "Active catalog product"],
+                    ["dealerVisible", "Visible to dealers"],
+                  ].map(([field, label]) => (
+                    <label key={field} className="flex items-center gap-2 text-sm font-medium">
+                      <input
+                        type="checkbox"
+                        checked={formData[field]}
+                        onChange={(event) => setFormData((current) => ({
+                          ...current, [field]: event.target.checked,
+                        }))}
+                      />
+                      {label}
+                    </label>
+                  ))}
                 </div>
               )}
 

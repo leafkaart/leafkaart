@@ -3,13 +3,12 @@ import { Eye, EyeOff, Lock, KeyRound } from "lucide-react";
 import logo from "../../assets/logo.png";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ToastContainer } from "../Toast/Toast";
 import { useToast } from "../../hooks/useToast";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toasts, addToast, removeToast } = useToast();
+  const { addToast } = useToast();
 
   // Email passed from ForgotPassword screen; fall back to manual entry if missing
   const [email, setEmail] = useState(location.state?.email || "");
@@ -69,7 +68,7 @@ const ResetPassword = () => {
 
   return (
     <>
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
 
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">

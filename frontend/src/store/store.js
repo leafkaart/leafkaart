@@ -11,7 +11,6 @@ import { dealerDashboardApi } from "./api/dealerDashboardApi";
 import authReducer from "./slices/authSlice";
 import productReducer from "./slices/productSlice";
 import bannerReducer from "./slices/bannerSlice";
-import notificationReducer from "./slices/notificationSlice";
 import orderReducer from "./slices/orderSlice";
 import analyticsReducer from "./slices/analyticsSlice";
 
@@ -20,7 +19,6 @@ export const store = configureStore({
     auth: authReducer,
     product: productReducer,
     banner: bannerReducer,
-    notification: notificationReducer,
     order: orderReducer,
     analytics: analyticsReducer,
 
